@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  redis:
+    image: docker.uclv.cu/redis:alpine
+    volumes:
+    - .redisdata:/data
+    container_name: redis
+
+  bot:
+    build: .
+    image: xevs/faffinity_bot
+    volumes:
+      - .:/app
+    links:
+      - redis
+    command: python src/bot.py
+    container_name: faffinity_bot
