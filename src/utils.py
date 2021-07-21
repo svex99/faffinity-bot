@@ -9,6 +9,12 @@ def humanize(data: FAMovie) -> None:
         if data[key]:
             if isinstance(data[key], list):
                 if isinstance(data[key][0], (str, int,)):
-                    data[key] = ', '.join(entry for entry in set(data[key]))
+                    # avoid repeated values in list
+                    clean_list = []
+                    for entry in data[key]:
+                        if entry not in clean_list:
+                            clean_list.append(entry)
+
+                    data[key] = ', '.join(entry for entry in clean_list)
         else:
             data[key] = '`-`'

@@ -2,6 +2,7 @@ import os
 import logging
 import asyncio
 import urllib3
+import json
 from functools import partial
 from datetime import datetime
 
@@ -14,7 +15,6 @@ from redis import Redis
 from requests_cache import CachedSession, RedisCache
 
 import keyboards as kbs
-import messages as msgs
 from bot_types import MessageEvent, CallbackMessageEventLike
 from utils import humanize
 
@@ -32,42 +32,21 @@ BOT_TOKEN = os.environ['BOT_TOKEN']
 ADMIN_ID = int(os.environ['ADMIN_ID'])
 REDIS_HOST = os.environ['REDIS_HOST']
 
+TRANSLATIONS = json.load(open('files/i18n_messages.json'))
+
 bot = TelegramClient('files/faffinity-bot', API_ID, API_HASH)
 bot.start(bot_token=BOT_TOKEN)
 
-cache_session = CachedSession(backend=RedisCache(connection=Redis(REDIS_HOST)))
-fa = FilmAffinity(cache_backend='redis')
-fa.session = cache_session
+redis = Redis(REDIS_HOST)
 
-
-@bot.on(NewMessage(pattern='/start'))
-async def start_handler(event: MessageEvent):
-    """
-    /start command handler.
-    """
-    await event.respond(msgs.start_command)
-
-    raise StopPropagation
-
-
-@bot.on(NewMessage(pattern='/help'))
-async def start_handler(event: MessageEvent):
-    """
-    /help command handler.
-    """
-    await event.respond(msgs.help_command)
-
-    raise StopPropagation
-
-
-@bot.on(NewMessage(pattern='/support'))
-async def start_handler(event: MessageEvent):
-    """
-    /support command handler.
-    """
-    await event.respond(msgs.support_command)
-
-    raise StopPropagation
+# FA cache
+cache_session = CachedSession(backend=RedisCache(connection=redis))
+# Spanish FA client
+fa_es = FilmAffinity(lang='es', cache_backend='redis')
+fa_es.session = cache_session
+# English FA client
+fa_en = FilmAffinity(lang='en', cache_backend='redis')
+fa_en.session = cache_session
 
 
 @bot.on(CallbackQuery(pattern=b'delete'))
@@ -80,6 +59,70 @@ async def delete_handler(event: CallbackQuery.Event):
     raise StopPropagation
 
 
+@bot.on(NewMessage())
+@bot.on(CallbackQuery())
+async def i18n_handler(event: CallbackMessageEventLike):
+    """
+    Sets the default language for this event.
+    """
+    lang = await bot.loop.run_in_executor(
+        None,
+        partial(redis.get, f'lang-{event.sender_id}')
+    )
+
+    if lang is None:
+        lang = 'es'
+        await bot.loop.run_in_executor(
+            None,
+            partial(redis.set, f'lang-{event.sender_id}', lang)
+        )
+    else:
+        lang = lang.decode('utf8')
+
+    event.lang = lang
+    event.i18n = lambda key: TRANSLATIONS[key][lang]
+    if lang == 'es':
+        event.fa_client = fa_es
+    else:
+        event.fa_client = fa_en
+
+
+@bot.on(NewMessage(pattern='/start'))
+async def start_handler(event: MessageEvent):
+    """
+    /start command handler.
+    """
+    _ = event.i18n
+
+    await event.respond(_('start'))
+
+    raise StopPropagation
+
+
+@bot.on(NewMessage(pattern='/help'))
+async def start_handler(event: MessageEvent):
+    """
+    /help command handler.
+    """
+    _ = event.i18n
+
+    await event.respond(_('help'))
+
+    raise StopPropagation
+
+
+@bot.on(NewMessage(pattern='/support'))
+async def start_handler(event: MessageEvent):
+    """
+    /support command handler.
+    """
+    _ = event.i18n
+
+    await event.respond(_('support'))
+
+    raise StopPropagation
+
+
 @bot.on(NewMessage(pattern=r'(?P<title>[^/].*)'))
 @bot.on(NewMessage(pattern=r'/cast (?P<cast>.+)'))
 @bot.on(NewMessage(pattern=r'/director (?P<director>.+)'))
@@ -87,6 +130,8 @@ async def search_handler(event: MessageEvent):
     """
     Handles queries by title, cast and director.
     """
+    _ = event.i18n
+    fa = event.fa_client
     query = event.pattern_match.groupdict()
 
     try:
@@ -94,22 +139,24 @@ async def search_handler(event: MessageEvent):
             None, partial(fa.search, 20, **query)
         )
     except FilmAffinityConnectionError as e:
-        await event.respond(msgs.fa_error)
+        await event.respond(_('fa_error'))
         logging.error(e)
     else:
         if result:
             await event.respond(
-                message='✅ Resultados de la búsqueda.',
-                buttons=kbs.search_result(result)
+                message=_('query_results'),
+                buttons=kbs.search_result(_, result)
             )
         else:
-            await event.respond('⚠️ No se han encontrado coincidencias.')
+            await event.respond(_('no_matches'))
 
     raise StopPropagation
 
 
 @bot.on(CallbackQuery(pattern=rb'film_(?P<id>\d+)'))
 async def movie_handler(event: CallbackMessageEventLike):
+    _ = event.i18n
+    fa = event.fa_client
     mid = event.pattern_match['id'].decode('utf8')
 
     try:
@@ -117,15 +164,15 @@ async def movie_handler(event: CallbackMessageEventLike):
             None, partial(fa.get_movie, **{'id': mid})
         )
     except FilmAffinityConnectionError as e:
-        await event.respond(msgs.fa_error)
+        await event.respond(_('fa_error'))
         logging.error(e)
     else:
         poster = movie['poster'] if movie['poster'] else 'files/noimgfull.jpg'
         humanize(movie)
         await event.respond(
-            message=msgs.movie_template.format(**movie),
+            message=_('movie_template').format(**movie),
             file=poster,
-            buttons=kbs.movie_keyboard(movie['id'])
+            buttons=kbs.movie_keyboard(_, movie['id'])
         )
 
     raise StopPropagation
@@ -133,6 +180,8 @@ async def movie_handler(event: CallbackMessageEventLike):
 
 @bot.on(CallbackQuery(pattern=rb'synopsis_(?P<id>\d+)'))
 async def synopsis_handler(event: CallbackQuery.Event):
+    _ = event.i18n
+    fa = event.fa_client
     mid = event.pattern_match['id'].decode('utf8')
 
     try:
@@ -140,12 +189,12 @@ async def synopsis_handler(event: CallbackQuery.Event):
             None, partial(fa.get_movie, **{'id': mid})
         )
     except FilmAffinityConnectionError as e:
-        await event.respond(msgs.fa_error)
+        await event.respond(_('fa_error'))
         logging.error(e)
     else:
         await event.respond(
-            message=msgs.movie_synopsis.format(**movie),
-            buttons=kbs.hide
+            message=f'ℹ **{_("Synopsis")}: ' + '{title}** ℹ\n\n{description}'.format(**movie),
+            buttons=kbs.hide(_)
         )
 
     raise StopPropagation
@@ -153,6 +202,9 @@ async def synopsis_handler(event: CallbackQuery.Event):
 
 @bot.on(CallbackQuery(pattern=rb'awards_(?P<id>\d+)'))
 async def awards_handler(event: CallbackQuery.Event):
+    lang = event.lang
+    _ = event.i18n
+    fa = event.fa_client
     mid = event.pattern_match['id'].decode('utf8')
 
     try:
@@ -160,36 +212,39 @@ async def awards_handler(event: CallbackQuery.Event):
             None, partial(fa.get_movie, **{'id': mid})
         )
     except FilmAffinityConnectionError as e:
-        await event.respond(msgs.fa_error)
+        await event.respond(_('fa_error'))
         logging.error(e)
     else:
         awards = movie['awards']
         if awards:
-            awards_text = f'🏆 **Premios: {movie["title"]}** 🏆\n\n'
+            awards_text = f'🏆 **{_("Awards")}: {movie["title"]}** 🏆\n\n'
             final = ''
 
             for a in awards:
                 if a['year'].isalnum():
                     awards_text += f'🔸 `{a["year"]}`: {a["award"]}\n'
                 else:
-                    final = f'{a["year"]} ↗️'
+                    final = f'↗ {a["year"]}'
 
             awards_text += (
-                f'\n[{final if final else "Ver en FilmAffinity↗️"}]'
-                f'(https://www.filmaffinity.com/es/film{movie["id"]}.html)'
+                f'\n[{final if final else _("see_on_fa")}]'
+                f'(https://www.filmaffinity.com/{lang}/film{movie["id"]}.html)'
             )
 
             await event.respond(
                 message=awards_text,
-                buttons=kbs.hide,
+                buttons=kbs.hide(_),
                 link_preview=False
             )
         else:
-            await event.respond('⚠️ No hay premios para mostrar.')
+            await event.respond(_('no_awards'))
 
 
 @bot.on(CallbackQuery(pattern=rb'reviews_(?P<id>\d+)'))
 async def reviews_handler(event: CallbackQuery.Event):
+    lang = event.lang
+    _ = event.i18n
+    fa = event.fa_client
     mid = event.pattern_match['id'].decode('utf8')
 
     try:
@@ -197,13 +252,13 @@ async def reviews_handler(event: CallbackQuery.Event):
             None, partial(fa.get_movie, **{'id': mid})
         )
     except FilmAffinityConnectionError as e:
-        await event.respond(msgs.fa_error)
+        await event.respond(_('fa_error'))
         logging.error(e)
     else:
         reviews = movie['reviews']
         if reviews:
             reviews_text = (
-                f'💭 **Críticas: {movie["title"]}** 💭\n'
+                f'💭 **{_("Reviews")}: {movie["title"]}** 💭\n'
             )
 
             for r in reviews:
@@ -211,20 +266,52 @@ async def reviews_handler(event: CallbackQuery.Event):
                 actual_review = r['review'].replace('[', '')
                 actual_review = actual_review.replace(']', '')
                 reviews_text += (
-                    f'\n👤 **{r["author"]}** [enlace↗️]'
-                    f'({r["url"] if r["url"] else f"www.filmaffinity.com/es/film{mid}.html"})\n'
+                    f'\n👤 [{r["author"]}]'
+                    f'({r["url"] if r["url"] else f"www.filmaffinity.com/{lang}/film{mid}.html"})\n'
                     f'💭 __{actual_review}__\n'
                 )
 
-            reviews_text += f'\n[Ver en FilmAffinity↗️](www.filmaffinity.com/es/pro-reviews.php?movie-id={mid})'
+            reviews_text += f'\n[{_("see_on_fa")}](www.filmaffinity.com/{lang}/pro-reviews.php?movie-id={mid})'
 
             await event.respond(
                 message=reviews_text,
-                buttons=kbs.hide,
+                buttons=kbs.hide(_),
                 link_preview=False
             )
         else:
-            await event.respond('⚠️ No hay crítica para mostrar.')
+            await event.respond(_('no_reviews'))
+
+
+@bot.on(NewMessage(pattern='/language'))
+async def language_handler(event: MessageEvent):
+    """
+    Sends a keyboard for language configuration.
+    """
+    await event.respond(
+        message=TRANSLATIONS['select_lang']['es'],
+        buttons=kbs.select_lang()
+    )
+
+    raise StopPropagation
+
+
+@bot.on(CallbackQuery(pattern=b'lang_(?P<lang>es|en)'))
+async def select_language_handler(event: MessageEvent):
+    """
+    Handles the language selection by the user.
+    """
+    lang = event.pattern_match['lang'].decode('utf8')
+
+    await bot.loop.run_in_executor(
+        None,
+        partial(redis.set, f'lang-{event.sender_id}', lang)
+    )
+
+    await event.edit(
+        text=TRANSLATIONS['lang_selected'][lang]
+    )
+
+    raise StopPropagation
 
 
 # #################### admin handlers ####################

@@ -1,14 +1,15 @@
-from typing import List
+from typing import List, Callable
 
 from telethon import Button
 
 from bot_types import FAMovie, Keyboard
 
 
-hide = [Button.inline('❌ Ocultar', b'delete')]
+def hide(_: Callable):
+    return [Button.inline(f'❌ {_("Hide")}', b'delete')]
 
 
-def search_result(result: FAMovie) -> Keyboard: 
+def search_result(_: Callable, result: List[FAMovie]) -> Keyboard:
     """
     Keyboard for results of a movie query.
     """
@@ -44,23 +45,35 @@ def search_result(result: FAMovie) -> Keyboard:
     #         ]
     #     )
 
-    buttons.append(hide)
+    buttons.append(hide(_))
 
     return buttons
 
 
-def movie_keyboard(mid: str) -> Keyboard:
+def movie_keyboard(_: Callable, mid: str) -> Keyboard:
     """
-    Keyboard for see movie synposis, awards and reviews.
+    Keyboard for see movie synopsis, awards and reviews.
     """
     mid = mid.encode('utf8')
 
     return [
         [
-            Button.inline('ℹ Sinopsis', b'synopsis_' + mid)
+            Button.inline(f'ℹ {_("Synopsis")}', b'synopsis_' + mid)
         ], [
-            Button.inline('🏆 Premios', b'awards_' + mid),
-            Button.inline('💭 Críticas', b'reviews_' + mid),
+            Button.inline(f'🏆 {_("Awards")}', b'awards_' + mid),
+            Button.inline(f'💭 {_("Reviews")}', b'reviews_' + mid),
         ],
-        hide
+        hide(_)
+    ]
+
+
+def select_lang():
+    """
+    Select language keyboard.
+    """
+    return [
+        [
+            Button.inline('🇪🇸 Español', b'lang_es'),
+            Button.inline('🇬🇧 English', b'lang_en')
+        ]
     ]

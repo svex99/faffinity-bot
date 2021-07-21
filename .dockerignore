@@ -1,8 +1,8 @@
-.dockerignore
-Dockerfile
-docker-compose.yml
-.gitignore
-.git/
-.env
-env
-.vscode
+/.dockerignore
+/Dockerfile
+/docker-compose.yml
+/.gitignore
+/.git
+/.env
+/env
+/.vscode
