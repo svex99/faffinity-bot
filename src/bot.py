@@ -9,6 +9,7 @@ from datetime import datetime
 import dotenv
 from telethon import TelegramClient
 from telethon.events import NewMessage, CallbackQuery, StopPropagation
+from telethon.errors.rpcerrorlist import MediaCaptionTooLongError
 from python_filmaffinity import FilmAffinity
 from python_filmaffinity.exceptions import FilmAffinityConnectionError
 from redis import Redis
@@ -87,16 +88,18 @@ async def i18n_handler(event: CallbackMessageEventLike):
         event.fa_client = fa_en
 
 
-@bot.on(NewMessage(pattern='/start'))
+@bot.on(NewMessage(pattern=r'/start( id_(?P<id>\d+))?'))
 async def start_handler(event: MessageEvent):
     """
     /start command handler.
     """
     _ = event.i18n
+    mid = event.pattern_match['id']
 
-    await event.respond(_('start'))
+    if not mid:
+        await event.respond(_('start'))
 
-    raise StopPropagation
+        raise StopPropagation
 
 
 @bot.on(NewMessage(pattern='/help'))
@@ -153,11 +156,14 @@ async def search_handler(event: MessageEvent):
     raise StopPropagation
 
 
+@bot.on(NewMessage(pattern=r'/start id_(?P<id>\d+)'))
 @bot.on(CallbackQuery(pattern=rb'film_(?P<id>\d+)'))
 async def movie_handler(event: CallbackMessageEventLike):
     _ = event.i18n
     fa = event.fa_client
-    mid = event.pattern_match['id'].decode('utf8')
+    mid = event.pattern_match['id']
+    if isinstance(mid, bytes):
+        mid = mid.decode('utf8')
 
     try:
         movie = await bot.loop.run_in_executor(
@@ -169,11 +175,22 @@ async def movie_handler(event: CallbackMessageEventLike):
     else:
         poster = movie['poster'] if movie['poster'] else 'files/noimgfull.jpg'
         humanize(movie)
-        await event.respond(
-            message=_('movie_template').format(**movie),
-            file=poster,
-            buttons=kbs.movie_keyboard(_, movie['id'])
-        )
+
+        try:
+            await event.respond(
+                message=_('movie_template').format(**movie),
+                file=poster,
+                buttons=kbs.movie_keyboard(_, movie['id'])
+            )
+        except MediaCaptionTooLongError:
+            await event.respond(
+                file=poster
+            )
+            await event.respond(
+                message=_('movie_template').format(**movie),
+                buttons=kbs.movie_keyboard(_, movie['id']),
+                link_preview=False
+            )
 
     raise StopPropagation
 
@@ -310,6 +327,60 @@ async def select_language_handler(event: MessageEvent):
     await event.edit(
         text=TRANSLATIONS['lang_selected'][lang]
     )
+
+    raise StopPropagation
+
+
+@bot.on(NewMessage(pattern='/top'))
+async def top_handler(event: MessageEvent):
+    """
+    /top command handler.
+    """
+    _ = event.i18n
+
+    await event.respond(
+        message=_('select_top'),
+        buttons=kbs.tops(_)
+    )
+
+    raise StopPropagation
+
+
+@bot.on(CallbackQuery(pattern=rb'top_(?P<service>\w+)'))
+async def select_language_handler(event: MessageEvent):
+    """
+    Handles the top selection by the user.
+    """
+    _ = event.i18n
+    fa: FilmAffinity = event.fa_client
+    service = event.pattern_match['service'].decode('utf8')
+
+    top_services = {
+        'HBO': fa.top_hbo,
+        'Netflix': fa.top_netflix,
+        'Filmin': fa.top_filmin,
+        'Movistar': fa.top_movistar,
+        'Rakuten': fa.top_rakuten,
+    }
+
+    try:
+        result = top_services[service](top=40)
+    except FilmAffinityConnectionError as e:
+        await event.respond(_('fa_error'))
+        logging.error(e)
+    else:
+        text = f'🔝 Top {service} 🔝\n\n' + '\n\n'.join(
+            [
+                '`%2d.` ' % i +
+                '🎬 [{title}](https://t.me/faffinitybot?start=id_{id})\n📅 {year}      ⭐ {rating}/10'.format(**movie)
+                for movie, i in zip(result, range(1, 50))
+            ]
+        )
+        logging.info(text)
+        await event.respond(
+            message=text,
+            buttons=kbs.hide(_)
+        )
 
     raise StopPropagation
 

@@ -67,7 +67,7 @@ def movie_keyboard(_: Callable, mid: str) -> Keyboard:
     ]
 
 
-def select_lang():
+def select_lang() -> Keyboard:
     """
     Select language keyboard.
     """
@@ -76,4 +76,18 @@ def select_lang():
             Button.inline('🇪🇸 Español', b'lang_es'),
             Button.inline('🇬🇧 English', b'lang_en')
         ]
+    ]
+
+
+def tops(_: Callable) -> Keyboard:
+    return [
+        [
+            Button.inline('🔸 HBO', b'top_HBO'),
+            Button.inline('🔸 Netflix', b'top_Netflix'),
+            Button.inline('🔸 Filmin', b'top_Filmin')
+        ], [
+            Button.inline('🔸 Movistar', b'top_Movistar'),
+            Button.inline('🔸 Rakuten', b'top_Rakuten')
+        ],
+        hide(_)
     ]

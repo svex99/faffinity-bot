@@ -35,6 +35,14 @@
         "es": "Ocultar",
         "en": "Hide"
     },
+    "Rating": {
+        "es": "Calificación",
+        "en": "Rating"
+    },
+    "votes": {
+        "es": "votos",
+        "en": "votes"
+    },
     "query_results": {
         "es": "✅ Resultados de la búsqueda.",
         "en": "✅ Search results."
@@ -62,5 +70,9 @@
     "see_on_fa": {
         "es": "↗ Ver en FilmAffinity",
         "en": "↗ See at FilmAffinity"
+    },
+    "select_top": {
+        "es": "\uD83D\uDD1D Selecciona un servicio.",
+        "en": "\uD83D\uDD1D Choose a service."
     }
 }
