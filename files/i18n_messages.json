@@ -39,10 +39,6 @@
         "es": "Calificación",
         "en": "Rating"
     },
-    "votes": {
-        "es": "votos",
-        "en": "votes"
-    },
     "query_results": {
         "es": "✅ Resultados de la búsqueda.",
         "en": "✅ Search results."
@@ -53,7 +49,7 @@
     },
     "no_awards": {
         "es": "⚠ No hay premios para mostrar.",
-        "en": "⚠ There are no awards to show"
+        "en": "⚠ There are no awards to show."
     },
     "no_reviews": {
         "es": "⚠️No hay críticas para mostrar.",
