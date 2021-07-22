@@ -1,12 +1,14 @@
 # faffinity-bot
 
+[🇪🇸 Leer versión en español](/README_es.md)
+
 Telegram bot to get info from https://filmaffinity.com.
 
 You can find it at Telegram: [@faffinitybot](https://t.me/faffinitybot).
 
 ## 🤖 How to run the bot
 
-1. Rename your `.env.example` file to `.env` and configure inside the environment variables properly:
+1. Rename the `.env.example` file to `.env` and configure inside the environment variables properly:
 
 - `API_ID` - your api ID from https://my.telegram.org.
 - `API_HASH` - your api hash from https://my.telegram.org.
@@ -34,6 +36,7 @@ Special thanks to these projects.
 - [Telethon](https://github.com/LonamiWebs/Telethon)
 - [python_filmaffinity](https://github.com/sergiormb/python_filmaffinity)
 
+<hr>
 
 >### Disclaimer
 >This bot is not associated to FilmAffinity. It is a personal project and is hosted by myself, so it can go offline without previous advice.
