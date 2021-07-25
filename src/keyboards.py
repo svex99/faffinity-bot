@@ -35,6 +35,7 @@ def movie_keyboard(_: Callable, mid: str) -> Keyboard:
 
     return [
         [
+            Button.inline(f'🖼 {_("Images")}', b'images_' + mid),
             Button.inline(f'ℹ {_("Synopsis")}', b'synopsis_' + mid)
         ], [
             Button.inline(f'🏆 {_("Awards")}', b'awards_' + mid),

@@ -322,6 +322,8 @@ async def awards_handler(event: CallbackQuery.Event):
         else:
             await event.respond(_('no_awards'))
 
+    raise StopPropagation
+
 
 @bot.on(CallbackQuery(pattern=rb'reviews_(?P<id>\d+)'))
 async def reviews_handler(event: CallbackQuery.Event):
@@ -366,6 +368,37 @@ async def reviews_handler(event: CallbackQuery.Event):
             )
         else:
             await event.respond(_('no_reviews'))
+
+    raise StopPropagation
+
+
+@bot.on(CallbackQuery(pattern=rb'images_(?P<id>\d+)'))
+async def reviews_handler(event: CallbackQuery.Event):
+    _ = event.i18n
+    fa = event.fa_client
+    mid = event.pattern_match['id'].decode('utf8')
+
+    try:
+        movie = await bot.loop.run_in_executor(
+            None, partial(fa.get_movie, **{'id': mid, 'images': True})
+        )
+    except FilmAffinityConnectionError as e:
+        await event.respond(_('fa_error'))
+        logging.error(e)
+    else:
+        images = [
+            still['image'] for still in movie['images']['stills']
+            if still['image']
+        ]
+        if images:
+            await event.respond(
+                message=f'🖼 **{_("Images")}: {movie["title"]}** 🖼',
+                file=images,
+            )
+        else:
+            await event.respond(_('no_images'))
+
+    raise StopPropagation
 
 
 @bot.on(NewMessage(pattern='/language'))

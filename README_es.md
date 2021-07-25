@@ -27,11 +27,9 @@ docker-compose up -d --build
 
 ## 📌 TODO
 
-- [ ] Obtener Screenwriter, Music y Cinematography para el lenguaje `en`.
-- [ ] Añadir soporte inline.
-- [ ] Descargar álbum completo de fotos.
-- [ ] Descargar tráiler.
-- [ ] Emitir mensaje a los usuarios del bot.
+- Obtener Screenwriter, Music y Cinematography para el lenguaje `en`.
+- Descargar tráiler.
+- Emitir mensaje a los usuarios del bot.
 
 ## 👏 Créditos
 

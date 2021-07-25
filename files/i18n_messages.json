@@ -39,6 +39,10 @@
         "es": "Calificación",
         "en": "Rating"
     },
+    "Images": {
+        "es": "Imágenes",
+        "en": "Image Gallery"
+    },
     "query_results": {
         "es": "✅ Resultados de la búsqueda.",
         "en": "✅ Search results."
@@ -54,6 +58,10 @@
     "no_reviews": {
         "es": "⚠️No hay críticas para mostrar.",
         "en": "⚠ There are now reviews to show."
+    },
+    "no_images": {
+        "es": "⚠ No hay imágenes para mostrar.",
+        "en": "⚠ There are no images to show."
     },
     "select_lang": {
         "es": "\uD83C\uDDEA\uD83C\uDDF8 Selecciona tu idioma:\n\n\uD83C\uDDEC\uD83C\uDDE7 Choose your language:",
