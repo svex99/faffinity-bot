@@ -26,6 +26,7 @@ docker-compose up -d --build
 
 - Get Screenwriter, Music and Cinematography for `en` language.
 - Download trailer.
+- Show more stats to admin.
 
 ## 👏 Credits
 
