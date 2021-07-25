@@ -1,7 +1,8 @@
+from typing import List, Union
 from bot_types import FAMovie
 
 
-def humanize(data: FAMovie) -> None:
+def humanize(data: FAMovie):
     """
     Humanize the movie data, modifies the data inplace.
     """
@@ -18,3 +19,5 @@ def humanize(data: FAMovie) -> None:
                     data[key] = ', '.join(entry for entry in clean_list)
         else:
             data[key] = '`-`'
+
+    return data

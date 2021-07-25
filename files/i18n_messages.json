@@ -8,8 +8,8 @@
         "en": "I want to thank you in advance for showing interest in reading this section.\n\n⭐ If you find this bot useful, you can support it by giving it a star on GitHub, [the code is totally public](https://github.com/svex99/faffinity-bot). \uD83D\uDE01\n\n\uD83E\uDD32 You can also give your support by making a donation to keep it online 24/7, I would be very grateful, in that case, you can contact me @svex99.\n\n\uD83E\uDD1D Don't stop sharing it with your friends. Thanks!"
     },
     "help": {
-        "es": "\uD83D\uDCA1 Puedes buscar por título, actor o director.\n\n**1.** Para buscar por el nombre de la película simplemente envía un mensaje con él.\n\n**2.** Para buscar por actor debes usar el comando /cast seguido del nombre del actor.\nEjemplo: `/cast Leonardo DiCaprio`\n\n**3.** Para buscar por director debes usar el comando /director seguido del nombre del director.\nEjemplo: `/director Quentin Tarantino`",
-        "en": "\uD83D\uDCA1 You can search by title, actor or director.\n\n**1.** To search by the name of the movie just send a message with it.\n\n**2.** To search by actor you must use the command /cast followed by the name of the actor.\nExample: `/cast Leonardo DiCaprio`\n\n**3.** To search by director you must use the command /director followed by the name of the director.\nExample: `/director Quentin Tarantino`"
+        "es": "\uD83D\uDCA1 Puedes buscar por título, actor o director.\n\n**1.** Para buscar por el nombre de la película simplemente envía un mensaje con él.\n\n**2.** Para buscar por actor debes usar el comando /cast seguido del nombre del actor.\nEjemplo: `/cast Leonardo DiCaprio`\n\n**3.** Para buscar por director debes usar el comando /director seguido del nombre del director.\nEjemplo: `/director Quentin Tarantino`\n\n\uD83D\uDCA1 Prueba la búsqueda inline escribiendo en cualquier chat `@faffinitybot` seguido del nombre de lo que deseas buscar.\nEjemplo: `@faffinitybot The Lobster`",
+        "en": "\uD83D\uDCA1 You can search by title, actor or director.\n\n**1.** To search by the name of the movie just send a message with it.\n\n**2.** To search by actor you must use the command /cast followed by the name of the actor.\nExample: `/cast Leonardo DiCaprio`\n\n**3.** To search by director you must use the command /director followed by the name of the director.\nExample: `/director Quentin Tarantino`\n\n\uD83D\uDCA1 Try the inline search by typing in any chat `@faffinitybot` followed by the name of what you want to search for.\nExample: `@faffinitybot The Lobster`"
     },
     "movie_template": {
         "es": "\uD83C\uDFAC **Título:** [{title}](www.filmaffinity.com/es/film{id}.html)\n⭐️ **Calificación:** {rating}/10 ({votes} votos)\n\uD83D\uDCC5 **Año:** {year}\n⏳ **Duración:** {duration}\n\uD83D\uDDFA **País:** {country}\n\uD83D\uDC64 **Dirección:** {directors}\n✍️ **Guion:** {writers}\n\uD83C\uDFB5 **Música:** {music}\n\uD83D\uDCF7 **Fotografía:** {cinematography}\n\uD83D\uDC65 **Reparto:** {actors}\n\uD83C\uDFE2 **Productora:** {producers}\n\uD83D\uDD30 **Género:** {genre}",
@@ -17,7 +17,7 @@
     },
     "fa_error": {
         "es": "❗ Ha ocurrido un error solicitando la información a FilmAffinity. Inténtalo de nuevo.",
-        "en": "❗ An error has occurred requesting the information from FilmAffinity. Try again. "
+        "en": "❗ An error has occurred requesting the information from FilmAffinity. Try again."
     },
     "Synopsis": {
         "es": "Sinopsis",
@@ -44,8 +44,8 @@
         "en": "✅ Search results."
     },
     "no_matches": {
-        "es": "⚠ No se han encontrado coincidencias.",
-        "en": "⚠ No matches found."
+        "es": "⚠ No se han encontrado coincidencias.\n▪️Consulta: `{query}`",
+        "en": "⚠ No matches found.\n▪️Query: `{query}`"
     },
     "no_awards": {
         "es": "⚠ No hay premios para mostrar.",
@@ -63,12 +63,20 @@
         "es": "\uD83C\uDDEA\uD83C\uDDF8 Tu idioma ahora es español.",
         "en": "\uD83C\uDDEC\uD83C\uDDE7 Your language is now English."
     },
-    "see_on_fa": {
+    "see_at_fa": {
         "es": "↗ Ver en FilmAffinity",
         "en": "↗ See at FilmAffinity"
     },
     "select_top": {
         "es": "\uD83D\uDD1D Selecciona un servicio.",
         "en": "\uD83D\uDD1D Choose a service."
+    },
+    "inline_result": {
+        "es": "\uD83C\uDFAC **Título:** [{title}](www.filmaffinity.com/es/film{id}.html)\n⭐️ **Calificación:** {rating}/10 ({votes} votos)\n\uD83D\uDDFA **País:** {country}\n\uD83D\uDC64 **Dirección:** {directors}\n\uD83D\uDC65 **Reparto:** {actors}\n",
+        "en": "\uD83C\uDFAC **Title:** [{title}](www.filmaffinity.com/en/film{id}.html)\n⭐️ **Rating:** {rating}/10 ({votes} votes)\n\uD83D\uDDFA **Country:** {country}\n\uD83D\uDC64 **Director:** {directors}\n\uD83D\uDC65 **Cast:** {actors}\n"
+    },
+    "see_at_bot": {
+        "es": "\uD83D\uDC40 Ver en FilmAffinity Bot",
+        "en": "\uD83D\uDC40 See at FilmAffinity Bot"
     }
 }

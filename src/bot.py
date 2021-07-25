@@ -8,7 +8,9 @@ from datetime import datetime
 
 import dotenv
 from telethon import TelegramClient
-from telethon.events import NewMessage, CallbackQuery, StopPropagation
+from telethon.events import NewMessage, CallbackQuery, StopPropagation, \
+    InlineQuery
+from telethon.tl.types import InputWebDocument
 from telethon.errors.rpcerrorlist import MediaCaptionTooLongError
 from python_filmaffinity import FilmAffinity
 from python_filmaffinity.exceptions import FilmAffinityConnectionError
@@ -32,6 +34,7 @@ API_HASH = os.environ['API_HASH']
 BOT_TOKEN = os.environ['BOT_TOKEN']
 ADMIN_ID = int(os.environ['ADMIN_ID'])
 REDIS_HOST = os.environ['REDIS_HOST']
+NO_IMAGE = 'https://www.filmaffinity.com/imgs/movies/noimgfull.jpg'
 
 TRANSLATIONS = json.load(open('files/i18n_messages.json'))
 
@@ -62,6 +65,7 @@ async def delete_handler(event: CallbackQuery.Event):
 
 @bot.on(NewMessage())
 @bot.on(CallbackQuery())
+@bot.on(InlineQuery())
 async def i18n_handler(event: CallbackMessageEventLike):
     """
     Sets the default language for this event.
@@ -86,6 +90,50 @@ async def i18n_handler(event: CallbackMessageEventLike):
         event.fa_client = fa_es
     else:
         event.fa_client = fa_en
+
+
+@bot.on(InlineQuery())
+async def inline_search_handler(event: InlineQuery.Event):
+    _ = event.i18n
+    fa = event.fa_client
+    builder = event.builder
+
+    try:
+        result = await bot.loop.run_in_executor(
+            None, partial(fa.search, 20, title=event.text)
+        )
+    except FilmAffinityConnectionError as e:
+        await event.answer([
+            builder.article(
+                title=_('fa_error'),
+                text=_('fa_error')
+            )
+        ])
+        logging.error(e)
+    else:
+        if result:
+            await event.answer([
+                builder.article(
+                    title=movie['title'],
+                    text=_('inline_result').format(**humanize(movie)),
+                    thumb=InputWebDocument(
+                        url=movie['poster'],
+                        size=1,
+                        mime_type='image/jpg',
+                        attributes=[]
+                    ) if movie['poster'] != '/imgs/movies/noimgfull.jpg' else None,
+                    link_preview=False,
+                    buttons=kbs.inline_details(_, movie['id'])
+                )
+                for movie in result
+            ])
+        else:
+            await event.answer([
+                builder.article(
+                    title=_('no_matches').format(query=event.text),
+                    text=_('no_matches').format(query=event.text),
+                )
+            ])
 
 
 @bot.on(NewMessage(pattern=r'/start( id_(?P<id>\d+))?'))
@@ -151,7 +199,16 @@ async def search_handler(event: MessageEvent):
                 buttons=kbs.search_result(_, result)
             )
         else:
-            await event.respond(_('no_matches'))
+            await event.respond(
+                message=_('no_matches').format(
+                    query=(
+                        query.get('title') or
+                        query.get('cast') or
+                        query.get('director') or
+                        '`-`'
+                    )
+                )
+            )
 
     raise StopPropagation
 
@@ -159,6 +216,12 @@ async def search_handler(event: MessageEvent):
 @bot.on(NewMessage(pattern=r'/start id_(?P<id>\d+)'))
 @bot.on(CallbackQuery(pattern=rb'film_(?P<id>\d+)'))
 async def movie_handler(event: CallbackMessageEventLike):
+    """
+    Shows the details about an specific movie.
+
+    The movie id can be received from a click in an inline button or a link
+    to the bot with the parameter start properly setted.
+    """
     _ = event.i18n
     fa = event.fa_client
     mid = event.pattern_match['id']
@@ -173,7 +236,7 @@ async def movie_handler(event: CallbackMessageEventLike):
         await event.respond(_('fa_error'))
         logging.error(e)
     else:
-        poster = movie['poster'] if movie['poster'] else 'files/noimgfull.jpg'
+        poster = movie['poster'] or NO_IMAGE
         humanize(movie)
 
         try:
@@ -210,7 +273,10 @@ async def synopsis_handler(event: CallbackQuery.Event):
         logging.error(e)
     else:
         await event.respond(
-            message=f'ℹ **{_("Synopsis")}: ' + '{title}** ℹ\n\n{description}'.format(**movie),
+            message=(
+                f'ℹ **{_("Synopsis")}: '
+                '{title}** ℹ\n\n{description}'.format(**movie)
+            ),
             buttons=kbs.hide(_)
         )
 
@@ -244,7 +310,7 @@ async def awards_handler(event: CallbackQuery.Event):
                     final = f'↗ {a["year"]}'
 
             awards_text += (
-                f'\n[{final if final else _("see_on_fa")}]'
+                f'\n[{final if final else _("see_at_fa")}]'
                 f'(https://www.filmaffinity.com/{lang}/film{movie["id"]}.html)'
             )
 
@@ -284,11 +350,14 @@ async def reviews_handler(event: CallbackQuery.Event):
                 actual_review = actual_review.replace(']', '')
                 reviews_text += (
                     f'\n👤 [{r["author"]}]'
-                    f'({r["url"] if r["url"] else f"www.filmaffinity.com/{lang}/film{mid}.html"})\n'
+                    f'({r["url"] or f"www.filmaffinity.com/{lang}/film{mid}.html"})\n'
                     f'💭 __{actual_review}__\n'
                 )
 
-            reviews_text += f'\n[{_("see_on_fa")}](www.filmaffinity.com/{lang}/pro-reviews.php?movie-id={mid})'
+            reviews_text += (
+                f'\n[{_("see_at_fa")}]'
+                f'(www.filmaffinity.com/{lang}/pro-reviews.php?movie-id={mid})'
+            )
 
             await event.respond(
                 message=reviews_text,
@@ -371,12 +440,13 @@ async def select_language_handler(event: MessageEvent):
     else:
         text = f'🔝 Top {service} 🔝\n\n' + '\n\n'.join(
             [
-                '`%2d.` ' % i +
-                '🎬 [{title}](https://t.me/faffinitybot?start=id_{id})\n📅 {year}      ⭐ {rating}/10'.format(**movie)
+                '`%2d.` ' % i + (
+                    '[{title}](https://t.me/faffinitybot?start=id_{id})\n'
+                    '📅 {year}      ⭐ {rating}/10'
+                ).format(**movie)
                 for movie, i in zip(result, range(1, 50))
             ]
         )
-        logging.info(text)
         await event.respond(
             message=text,
             buttons=kbs.hide(_)

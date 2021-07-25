@@ -6,7 +6,7 @@ from bot_types import FAMovie, Keyboard
 
 
 def hide(_: Callable):
-    return [Button.inline(f'❌ {_("Hide")}', b'delete')]
+    return [Button.inline(f'➖ {_("Hide")}', b'delete')]
 
 
 def search_result(_: Callable, result: List[FAMovie]) -> Keyboard:
@@ -21,29 +21,6 @@ def search_result(_: Callable, result: List[FAMovie]) -> Keyboard:
             )
         ] for movie in result
     ]
-    # for i in range(0, len(result), 2):
-    #     buttons.append(
-    #         [
-    #             Button.inline(
-    #                 result[i]['title'],
-    #                 b'film_' + result[i]['id'].encode('utf8')
-    #             ),
-    #             Button.inline(
-    #                 result[i + 1]['title'],
-    #                 b'film_' + result[i + 1]['id'].encode('utf8')
-    #             ),
-    #         ]
-    #     )
-
-    # if len(result) % 2 == 1:
-    #     buttons.append(
-    #         [
-    #             Button.inline(
-    #                 result[-1]['title'],
-    #                 b'film_' + result[-1]['id'].encode('utf8')
-    #             ),
-    #         ]
-    #     )
 
     buttons.append(hide(_))
 
@@ -90,4 +67,10 @@ def tops(_: Callable) -> Keyboard:
             Button.inline('🔸 Rakuten', b'top_Rakuten')
         ],
         hide(_)
+    ]
+
+
+def inline_details(_: Callable, mid: str) -> Keyboard:
+    return [
+        Button.url(_('see_at_bot'), f'https://t.me/faffinitybot?start=id_{mid}')
     ]

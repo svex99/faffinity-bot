@@ -25,7 +25,6 @@ docker-compose up -d --build
 ## 📌 TODO
 
 - [ ] Get Screenwriter, Music and Cinematography for `en` language.
-- [ ] Add inline support.
 - [ ] Download full album of photos.
 - [ ] Download trailer.
 - [ ] Broadcast message to users of the bot.
