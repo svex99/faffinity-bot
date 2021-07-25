@@ -162,7 +162,10 @@ async def help_handler(event: MessageEvent):
         '/stats - stats of the bot.'
     ) if event.sender_id == ADMIN_ID else ''
 
-    await event.respond(_('help') + admin_help)
+    await event.respond(
+        message=_('help') + admin_help,
+        buttons=kbs.hide(_)
+    )
 
     raise StopPropagation
 
@@ -174,7 +177,10 @@ async def support_handler(event: MessageEvent):
     """
     _ = event.i18n
 
-    await event.respond(_('support'))
+    await event.respond(
+        message=_('support'),
+        buttons=kbs.hide(_)
+    )
 
     raise StopPropagation
 
@@ -397,8 +403,7 @@ async def reviews_handler(event: CallbackQuery.Event):
         ]
         if images:
             await event.respond(
-                message=f'🖼 **{_("Images")}: {movie["title"]}** 🖼',
-                file=images,
+                file=images
             )
         else:
             await event.respond(_('no_images'))
