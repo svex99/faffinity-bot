@@ -16,7 +16,6 @@ from python_filmaffinity import FilmAffinity
 from python_filmaffinity.exceptions import FilmAffinityConnectionError
 from redis import Redis
 from requests_cache import CachedSession, RedisCache
-from tortoise import Tortoise
 
 import keyboards as kbs
 from bot_types import MessageEvent, CallbackMessageEventLike
