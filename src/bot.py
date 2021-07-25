@@ -72,15 +72,13 @@ async def i18n_handler(event: CallbackMessageEventLike):
     Sets the default language for this event.
     """
     lang = await bot.loop.run_in_executor(
-        None,
-        partial(redis.get, f'lang-{event.sender_id}')
+        None, partial(redis.get, f'lang-{event.sender_id}')
     )
 
     if lang is None:
         lang = 'es'
         await bot.loop.run_in_executor(
-            None,
-            partial(redis.set, f'lang-{event.sender_id}', lang)
+            None, partial(redis.set, f'lang-{event.sender_id}', lang)
         )
     else:
         lang = lang.decode('utf8')
@@ -152,19 +150,26 @@ async def start_handler(event: MessageEvent):
 
 
 @bot.on(NewMessage(pattern='/help'))
-async def start_handler(event: MessageEvent):
+async def help_handler(event: MessageEvent):
     """
     /help command handler.
     """
     _ = event.i18n
 
-    await event.respond(_('help'))
+    admin_help = (
+        '\n\n##### Admin help #####\n'
+        '/session - get the session file.\n'
+        '/broadcast - broadcast a message to users of the bot.\n'
+        '/stats - stats of the bot.'
+    ) if event.sender_id == ADMIN_ID else ''
+
+    await event.respond(_('help') + admin_help)
 
     raise StopPropagation
 
 
 @bot.on(NewMessage(pattern='/support'))
-async def start_handler(event: MessageEvent):
+async def support_handler(event: MessageEvent):
     """
     /support command handler.
     """
@@ -423,8 +428,7 @@ async def select_language_handler(event: MessageEvent):
     lang = event.pattern_match['lang'].decode('utf8')
 
     await bot.loop.run_in_executor(
-        None,
-        partial(redis.set, f'lang-{event.sender_id}', lang)
+        None, partial(redis.set, f'lang-{event.sender_id}', lang)
     )
 
     await event.edit(
@@ -467,7 +471,9 @@ async def select_language_handler(event: MessageEvent):
     }
 
     try:
-        result = top_services[service](top=40)
+        result = await bot.loop.run_in_executor(
+            None, partial(top_services[service], 40)
+        )
     except FilmAffinityConnectionError as e:
         await event.respond(_('fa_error'))
         logging.error(e)
@@ -524,8 +530,7 @@ async def broadcast_handler(event: MessageEvent):
     if msg:
         # get the user ids from redis keys
         lang_keys = await bot.loop.run_in_executor(
-            None,
-            partial(redis.keys, 'lang-*')
+            None, partial(redis.keys, 'lang-*')
         )
         user_ids = map(lambda x: int(x.split(b'-')[1]), lang_keys)
 
@@ -561,16 +566,14 @@ async def broadcast_handler(event: MessageEvent):
     /stats command handler.
     """
     lang_keys = await bot.loop.run_in_executor(
-        None,
-        partial(redis.keys, 'lang-*')
+        None, partial(redis.keys, 'lang-*')
     )
 
     es_count = 0
     en_count = 0
     for lk in lang_keys:
         lang = await bot.loop.run_in_executor(
-            None,
-            partial(redis.get, lk)
+            None, partial(redis.get, lk)
         )
         if lang == b'es':
             es_count += 1
