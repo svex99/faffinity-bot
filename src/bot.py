@@ -555,6 +555,40 @@ async def broadcast_handler(event: MessageEvent):
     raise StopPropagation
 
 
+@bot.on(NewMessage(pattern=r'/stats'))
+async def broadcast_handler(event: MessageEvent):
+    """
+    /stats command handler.
+    """
+    lang_keys = await bot.loop.run_in_executor(
+        None,
+        partial(redis.keys, 'lang-*')
+    )
+
+    es_count = 0
+    en_count = 0
+    for lk in lang_keys:
+        lang = await bot.loop.run_in_executor(
+            None,
+            partial(redis.get, lk)
+        )
+        if lang == b'es':
+            es_count += 1
+        elif lang == b'en':
+            en_count += 1
+
+    await event.respond(
+        message=(
+            '📊 Stats of the bot:\n'
+            f'👥 Total of users: `{len(lang_keys)}`\n'
+            f'🇪🇸 Spanish language: `{es_count}`\n'
+            f'🇬🇧 English language: `{en_count}`'
+        )
+    )
+
+    raise StopPropagation
+
+
 async def main():
     await bot.run_until_disconnected()
 
