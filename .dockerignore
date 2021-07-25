@@ -1,8 +1,0 @@
-/.dockerignore
-/Dockerfile
-/docker-compose.yml
-/.gitignore
-/.git
-/.env
-/env
-/.vscode
