@@ -16,10 +16,7 @@ Puedes encontrarlo en Telegram: [@faffinitybot](https://t.me/faffinitybot).
 - `ADMIN_ID` - ID de tu cuenta en Telegram.
 - `REDIS_HOST` - host del servicio de redis que va a funcionar como caché (si vas a usar `docker-compose` puedes asinarle `redis` a esta variable).
 
-2. Make sure you have installed docker and docker-compose, go to the root folder of the project and run the command:
-
 2. Verifica que tengas instalado docker y docker-compose, ve a la raíz del proyecto y ejecuta el comando:
-
 
 ```
 docker-compose up -d --build
@@ -33,6 +30,7 @@ docker-compose up -d --build
 ## 👏 Créditos
 
 Agradecimientos especiales a estos poyectos.
+
 - [Telethon](https://github.com/LonamiWebs/Telethon)
 - [python_filmaffinity](https://github.com/sergiormb/python_filmaffinity)
 
