@@ -16,6 +16,7 @@ from python_filmaffinity import FilmAffinity
 from python_filmaffinity.exceptions import FilmAffinityConnectionError
 from redis import Redis
 from requests_cache import CachedSession, RedisCache
+from tortoise import Tortoise
 
 import keyboards as kbs
 from bot_types import MessageEvent, CallbackMessageEventLike
@@ -509,6 +510,47 @@ async def session_handler(event: MessageEvent):
         message=f'`{datetime.now().strftime(format_)}`',
         file='files/faffinity-bot.session'
     )
+
+    raise StopPropagation
+
+
+@bot.on(NewMessage(pattern=r'/broadcast'))
+async def broadcast_handler(event: MessageEvent):
+    """
+    /broadcast command handler.
+    """
+    msg = await event.get_reply_message()
+
+    if msg:
+        # get the user ids from redis keys
+        lang_keys = await bot.loop.run_in_executor(
+            None,
+            partial(redis.keys, 'lang-*')
+        )
+        user_ids = map(lambda x: int(x.split(b'-')[1]), lang_keys)
+
+        await event.respond(f'📢 Staring broadcast to {len(lang_keys)} users...')
+
+        # broadcast the message while no Exception raised
+        count = 0
+        for user_id in user_ids:
+            try:
+                await bot.send_message(
+                    entity=user_id,
+                    message=msg
+                )
+            except Exception as e:
+                await event.respond(
+                    message=f'{type(e)}: {e}'
+                )
+                break
+            else:
+                count += 1
+                await asyncio.sleep(1)
+
+        await event.reply(f'✅ Broadcasted message to {count} users.')
+    else:
+        await event.respond('⚠ You must reply to a message with /broadcast command.')
 
     raise StopPropagation
 

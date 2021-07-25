@@ -29,7 +29,6 @@ docker-compose up -d --build
 
 - Obtener Screenwriter, Music y Cinematography para el lenguaje `en`.
 - Descargar tráiler.
-- Emitir mensaje a los usuarios del bot.
 
 ## 👏 Créditos
 
