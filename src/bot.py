@@ -179,7 +179,8 @@ async def support_handler(event: MessageEvent):
 
     await event.respond(
         message=_('support'),
-        buttons=kbs.hide(_)
+        buttons=kbs.hide(_),
+        link_preview=False
     )
 
     raise StopPropagation
@@ -493,7 +494,8 @@ async def select_language_handler(event: MessageEvent):
         )
         await event.respond(
             message=text,
-            buttons=kbs.hide(_)
+            buttons=kbs.hide(_),
+            link_preview=False
         )
 
     raise StopPropagation
@@ -538,9 +540,9 @@ async def broadcast_handler(event: MessageEvent):
         )
         user_ids = map(lambda x: int(x.split(b'-')[1]), lang_keys)
 
-        await event.respond(f'📢 Staring broadcast to {len(lang_keys)} users...')
+        await event.respond(f'📢 Starting broadcast to `{len(lang_keys)}` users...')
 
-        # broadcast the message while no Exception raised
+        # broadcast the message
         count = 0
         for user_id in user_ids:
             try:
@@ -549,15 +551,19 @@ async def broadcast_handler(event: MessageEvent):
                     message=msg
                 )
             except Exception as e:
-                await event.respond(
-                    message=f'{type(e)}: {e}'
-                )
-                break
+                if not isinstance(e, ValueError):
+                    await event.respond(
+                        message=(
+                            f'`{type(e)}: {e}`\n\n'
+                            f'Broadcasted to `{count}` users. Sleeping `60` seconds...`'
+                        )
+                    )
+                    await asyncio.sleep(60)
             else:
                 count += 1
                 await asyncio.sleep(1)
 
-        await event.reply(f'✅ Broadcasted message to {count} users.')
+        await event.reply(f'✅ Done. Broadcasted message to `{count}` users.')
     else:
         await event.respond('⚠ You must reply to a message with /broadcast command.')
 
