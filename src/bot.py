@@ -11,7 +11,8 @@ from telethon import TelegramClient
 from telethon.events import NewMessage, CallbackQuery, StopPropagation, \
     InlineQuery
 from telethon.tl.types import InputWebDocument
-from telethon.errors.rpcerrorlist import MediaCaptionTooLongError
+from telethon.errors.rpcerrorlist import MediaCaptionTooLongError, \
+    WebpageMediaEmptyError
 from python_filmaffinity import FilmAffinity
 from python_filmaffinity.exceptions import FilmAffinityConnectionError
 from redis import Redis
@@ -385,7 +386,7 @@ async def reviews_handler(event: CallbackQuery.Event):
 
 
 @bot.on(CallbackQuery(pattern=rb'images_(?P<id>\d+)'))
-async def reviews_handler(event: CallbackQuery.Event):
+async def images_handler(event: CallbackQuery.Event):
     _ = event.i18n
     fa = event.fa_client
     mid = event.pattern_match['id'].decode('utf8')
@@ -403,9 +404,17 @@ async def reviews_handler(event: CallbackQuery.Event):
             if still['image']
         ]
         if images:
-            await event.respond(
-                file=images
-            )
+            try:
+                await event.respond(
+                    file=images
+                )
+            except WebpageMediaEmptyError:
+                await event.respond(_('no_images'))
+                # notify admin for debugging
+                await bot.send_message(
+                    entity=ADMIN_ID,
+                    message=f'`WebpageMediaEmptyError in movies_handler: {mid}`'
+                )
         else:
             await event.respond(_('no_images'))
 
