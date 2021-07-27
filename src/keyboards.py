@@ -75,3 +75,12 @@ def inline_details(_: Callable, mid: str) -> Keyboard:
     return [
         Button.url(_('see_at_bot'), f'https://t.me/faffinitybot?start=id_{mid}')
     ]
+
+
+def support(_: Callable):
+    return [
+        [
+            Button.url(_('rate'), 'https://t.me/BotsArchive/2091'),
+        ],
+        hide(_)
+    ]

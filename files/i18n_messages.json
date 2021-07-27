@@ -43,6 +43,10 @@
         "es": "Imágenes",
         "en": "Image Gallery"
     },
+    "rate": {
+        "es": "Califica este bot",
+        "en": "Rate this bot"
+    },
     "query_results": {
         "es": "✅ Resultados de la búsqueda.",
         "en": "✅ Search results."

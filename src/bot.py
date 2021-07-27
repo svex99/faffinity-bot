@@ -179,7 +179,7 @@ async def support_handler(event: MessageEvent):
 
     await event.respond(
         message=_('support'),
-        buttons=kbs.hide(_),
+        buttons=kbs.support(_),
         link_preview=False
     )
 
