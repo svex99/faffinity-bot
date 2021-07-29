@@ -12,7 +12,7 @@ from telethon.events import NewMessage, CallbackQuery, StopPropagation, \
     InlineQuery
 from telethon.tl.types import InputWebDocument
 from telethon.errors.rpcerrorlist import MediaCaptionTooLongError, \
-    WebpageMediaEmptyError
+    WebpageMediaEmptyError, UserIsBlockedError
 from python_filmaffinity import FilmAffinity
 from python_filmaffinity.exceptions import FilmAffinityConnectionError
 from redis import Redis
@@ -409,7 +409,6 @@ async def images_handler(event: CallbackQuery.Event):
                     file=images
                 )
             except WebpageMediaEmptyError:
-                await event.respond(_('no_images'))
                 # notify admin for debugging
                 await bot.send_message(
                     entity=ADMIN_ID,
@@ -559,15 +558,16 @@ async def broadcast_handler(event: MessageEvent):
                     entity=user_id,
                     message=msg
                 )
+            except (UserIsBlockedError, ValueError):
+                pass
             except Exception as e:
-                if not isinstance(e, ValueError):
-                    await event.respond(
-                        message=(
-                            f'`{type(e)}: {e}`\n\n'
-                            f'Broadcasted to `{count}` users. Sleeping `60` seconds...`'
-                        )
+                await event.respond(
+                    message=(
+                        f'`{type(e)}: {e}`\n\n'
+                        f'Broadcasted to `{count}` users. Sleeping `60` seconds...`'
                     )
-                    await asyncio.sleep(60)
+                )
+                await asyncio.sleep(60)
             else:
                 count += 1
                 await asyncio.sleep(1)
