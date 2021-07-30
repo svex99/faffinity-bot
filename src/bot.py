@@ -446,7 +446,7 @@ async def images_handler(event: CallbackQuery.Event):
                 except WebpageMediaEmptyError:
                     pass
 
-            if not all((result_0, result_1, result_2, )):
+            if not any((result_0, result_1, result_2, )):
                 await event.respond(_('no_images'))
                 # notify admin for debugging
                 await bot.send_message(
