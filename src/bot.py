@@ -20,15 +20,10 @@ from requests_cache import CachedSession, RedisCache
 
 import keyboards as kbs
 from bot_types import MessageEvent, CallbackMessageEventLike
-from utils import humanize
+from utils import humanize, TelegramLogsHandler
 
 
 dotenv.load_dotenv()
-urllib3.disable_warnings()
-logging.basicConfig(
-    format='[%(levelname)s/%(asctime)s] %(name)s: %(message)s',
-    level=logging.INFO
-)
 
 API_ID = int(os.environ['API_ID'])
 API_HASH = os.environ['API_HASH']
@@ -36,10 +31,20 @@ BOT_TOKEN = os.environ['BOT_TOKEN']
 ADMIN_ID = int(os.environ['ADMIN_ID'])
 REDIS_HOST = os.environ['REDIS_HOST']
 NO_IMAGE = 'https://www.filmaffinity.com/imgs/movies/noimgfull.jpg'
-
 TRANSLATIONS = json.load(open('files/i18n_messages.json'))
 
 bot = TelegramClient('files/faffinity-bot', API_ID, API_HASH)
+
+logging.basicConfig(
+    format='[%(levelname)s/%(asctime)s] %(name)s: %(message)s',
+    level=logging.INFO,
+    handlers=[
+        logging.StreamHandler(),
+        TelegramLogsHandler(bot, ADMIN_ID)
+    ]
+)
+
+urllib3.disable_warnings()
 bot.start(bot_token=BOT_TOKEN)
 
 redis = Redis(REDIS_HOST)

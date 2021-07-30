@@ -1,4 +1,8 @@
-from typing import List, Union
+from logging import StreamHandler
+import asyncio
+
+from telethon import TelegramClient
+
 from bot_types import FAMovie
 
 
@@ -21,3 +25,24 @@ def humanize(data: FAMovie):
             data[key] = '`-`'
 
     return data
+
+
+class TelegramLogsHandler(StreamHandler):
+    """
+    logging Handler to send logs to Telegram chat.
+    """
+
+    def __init__(self, client: TelegramClient, user_id: int):
+        StreamHandler.__init__(self)
+        self.client = client
+        self.user_id = user_id
+
+    async def _emit(self, message):
+        try:
+            await self.client.send_message(self.user_id, message)
+        except ConnectionError:
+            pass
+
+    def emit(self, record):
+        message = f'`{self.format(record)}`'
+        asyncio.create_task(self._emit(message))
