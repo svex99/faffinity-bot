@@ -54,12 +54,21 @@ fa_en = FilmAffinity(lang='en', cache_backend='redis')
 fa_en.session = cache_session
 
 
-@bot.on(CallbackQuery(pattern=b'delete'))
+@bot.on(CallbackQuery(pattern=rb'delete(_(?P<msg_1>\d+))?'))
 async def delete_handler(event: CallbackQuery.Event):
     """
-    Deletes the message of the button clicked.
+    Deletes the message of the button clicked and max 2 messages more.
     """
-    await event.delete()
+    msg_1 = event.pattern_match['msg_1']
+
+    messages_to_delete = [event.message_id]
+    if msg_1 is not None:
+        messages_to_delete.append(int(msg_1))
+
+    await bot.delete_messages(
+        entity=event.sender_id,
+        message_ids=messages_to_delete
+    )
 
     raise StopPropagation
 
@@ -259,12 +268,16 @@ async def movie_handler(event: CallbackMessageEventLike):
                 buttons=kbs.movie_keyboard(_, movie['id'])
             )
         except MediaCaptionTooLongError:
-            await event.respond(
+            poster_msg = await event.respond(
                 file=poster
             )
             await event.respond(
                 message=_('movie_template').format(**movie),
-                buttons=kbs.movie_keyboard(_, movie['id']),
+                buttons=kbs.movie_keyboard(
+                    _,
+                    mid=movie['id'],
+                    linked_msg_ids=[poster_msg.id]
+                ),
                 link_preview=False
             )
 
@@ -387,6 +400,10 @@ async def reviews_handler(event: CallbackQuery.Event):
 
 @bot.on(CallbackQuery(pattern=rb'images_(?P<id>\d+)'))
 async def images_handler(event: CallbackQuery.Event):
+    """
+    Sends images of a movie. Sends as max 30 images in three messages with
+    10 images each.
+    """
     _ = event.i18n
     fa = event.fa_client
     mid = event.pattern_match['id'].decode('utf8')
@@ -403,12 +420,34 @@ async def images_handler(event: CallbackQuery.Event):
             still['image'] for still in movie['images']['stills']
             if still['image']
         ]
+        group_0, group_1, group_2 = images[:10], images[10:20], images[20:30]
+
         if images:
-            try:
-                await event.respond(
-                    file=images
-                )
-            except WebpageMediaEmptyError:
+            result_0, result_1, result_2 = None, None, None
+
+            # send first bulk of images
+            if group_0:
+                try:
+                    result_0 = await event.respond(file=group_0)
+                except WebpageMediaEmptyError:
+                    pass
+
+            # send second bulk of images
+            if group_1:
+                try:
+                    result_1 = await event.respond(file=group_1)
+                except WebpageMediaEmptyError:
+                    pass
+
+            # send third bulk of images
+            if group_2:
+                try:
+                    result_2 = await event.respond(file=group_2)
+                except WebpageMediaEmptyError:
+                    pass
+
+            if not all((result_0, result_1, result_2, )):
+                await event.respond(_('no_images'))
                 # notify admin for debugging
                 await bot.send_message(
                     entity=ADMIN_ID,
@@ -580,7 +619,7 @@ async def broadcast_handler(event: MessageEvent):
 
 
 @bot.on(NewMessage(pattern=r'/stats'))
-async def broadcast_handler(event: MessageEvent):
+async def stats_handler(event: MessageEvent):
     """
     /stats command handler.
     """

@@ -1,12 +1,28 @@
-from typing import List, Callable
+from typing import List, Callable, Optional
 
 from telethon import Button
 
 from bot_types import FAMovie, Keyboard
 
 
-def hide(_: Callable):
-    return [Button.inline(f'➖ {_("Hide")}', b'delete')]
+def hide(
+    _: Callable,
+    linked_msg_ids: Optional[List[Optional[int]]] = None,
+) -> Keyboard:
+    """
+    Builds the hide button that when clicked deletes the message binded,
+    optionally can delete two messages more.
+    """
+    linked_msg_ids = linked_msg_ids or []
+    data = b'delete'
+
+    for msg_id in linked_msg_ids:
+        if msg_id is None:
+            continue
+
+        data += (b'_' + str(msg_id).encode('utf8'))
+
+    return [Button.inline(f'➖ {_("Hide")}', data)]
 
 
 def search_result(_: Callable, result: List[FAMovie]) -> Keyboard:
@@ -27,7 +43,11 @@ def search_result(_: Callable, result: List[FAMovie]) -> Keyboard:
     return buttons
 
 
-def movie_keyboard(_: Callable, mid: str) -> Keyboard:
+def movie_keyboard(
+    _: Callable,
+    mid: str,
+    linked_msg_ids: Optional[List[Optional[int]]] = None
+) -> Keyboard:
     """
     Keyboard for see movie synopsis, awards and reviews.
     """
@@ -41,7 +61,7 @@ def movie_keyboard(_: Callable, mid: str) -> Keyboard:
             Button.inline(f'🏆 {_("Awards")}', b'awards_' + mid),
             Button.inline(f'💭 {_("Reviews")}', b'reviews_' + mid),
         ],
-        hide(_)
+        hide(_, linked_msg_ids)
     ]
 
 
