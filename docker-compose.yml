@@ -5,7 +5,11 @@ services:
     image: docker.uclv.cu/redis:alpine
     volumes:
     - .redisdata:/data
+    - ./files/redis.conf:/usr/local/etc/redis/redis.conf
     container_name: redis
+    ports:
+      - 6379:6379
+    command: redis-server /usr/local/etc/redis/redis.conf
 
   bot:
     build: .
