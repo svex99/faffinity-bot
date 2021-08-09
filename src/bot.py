@@ -175,7 +175,8 @@ async def help_handler(event: MessageEvent):
         '\n\n##### Admin help #####\n'
         '/session - get the session file.\n'
         '/broadcast - broadcast a message to users of the bot.\n'
-        '/stats - stats of the bot.'
+        '/stats - stats of the bot.\n'
+        '/ads - list of active ads.\n'
     ) if event.sender_id == ADMIN_ID else ''
 
     await event.respond(
