@@ -1,5 +1,7 @@
+from typing import List, Callable
 from logging import StreamHandler
 import asyncio
+import random
 
 from telethon import TelegramClient
 
@@ -25,6 +27,13 @@ def humanize(data: FAMovie):
             data[key] = '`-`'
 
     return data
+
+
+def get_random_ad(_: Callable, ads: List[str]) -> str:
+    """
+    Returns text of a random ad from files/ads.json or the default ad text.
+    """
+    return '\n\n' + (random.choice(ads) or _('default_ad'))
 
 
 class TelegramLogsHandler(StreamHandler):

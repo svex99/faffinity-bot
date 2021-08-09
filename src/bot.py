@@ -20,7 +20,7 @@ from requests_cache import CachedSession, RedisCache
 
 import keyboards as kbs
 from bot_types import MessageEvent, CallbackMessageEventLike
-from utils import humanize, TelegramLogsHandler
+from utils import humanize, TelegramLogsHandler, get_random_ad
 
 
 dotenv.load_dotenv()
@@ -32,6 +32,7 @@ ADMIN_ID = int(os.environ['ADMIN_ID'])
 REDIS_HOST = os.environ['REDIS_HOST']
 NO_IMAGE = 'https://www.filmaffinity.com/imgs/movies/noimgfull.jpg'
 TRANSLATIONS = json.load(open('files/i18n_messages.json'))
+ADS = json.load(open('files/ads.json', encoding='utf8'))
 
 bot = TelegramClient('files/faffinity-bot', API_ID, API_HASH)
 
@@ -265,19 +266,21 @@ async def movie_handler(event: CallbackMessageEventLike):
     else:
         poster = movie['poster'] or NO_IMAGE
         humanize(movie)
+        message = _('movie_template').format(**movie) + get_random_ad(_, ADS)
 
         try:
             await event.respond(
-                message=_('movie_template').format(**movie),
+                message=message,
                 file=poster,
-                buttons=kbs.movie_keyboard(_, movie['id'])
+                buttons=kbs.movie_keyboard(_, movie['id']),
+                link_preview=False
             )
         except MediaCaptionTooLongError:
             poster_msg = await event.respond(
                 file=poster
             )
             await event.respond(
-                message=_('movie_template').format(**movie),
+                message=message,
                 buttons=kbs.movie_keyboard(
                     _,
                     mid=movie['id'],
@@ -306,9 +309,11 @@ async def synopsis_handler(event: CallbackQuery.Event):
         await event.respond(
             message=(
                 f'ℹ **{_("Synopsis")}: '
-                '{title}** ℹ\n\n{description}'.format(**movie)
+                '{title}** ℹ\n\n{description}'.format(**movie) +
+                get_random_ad(_, ADS)
             ),
-            buttons=kbs.hide(_)
+            buttons=kbs.hide(_),
+            link_preview=False
         )
 
     raise StopPropagation
@@ -346,7 +351,7 @@ async def awards_handler(event: CallbackQuery.Event):
             )
 
             await event.respond(
-                message=awards_text,
+                message=awards_text + get_random_ad(_, ADS),
                 buttons=kbs.hide(_),
                 link_preview=False
             )
@@ -393,7 +398,7 @@ async def reviews_handler(event: CallbackQuery.Event):
             )
 
             await event.respond(
-                message=reviews_text,
+                message=reviews_text + get_random_ad(_, ADS),
                 buttons=kbs.hide(_),
                 link_preview=False
             )
@@ -561,6 +566,41 @@ async def admin_handler(event: MessageEvent):
     """
     if event.sender_id != ADMIN_ID:
         raise StopPropagation
+
+
+@bot.on(NewMessage(pattern='/ads'))
+async def list_ads_handler(event: MessageEvent):
+    """
+    Lists the ads saved in files/ads.json.
+    """
+    text = '\n`---------------`\n'.join(
+        f'/change_ad_{i}\n{ADS[i]}' for i in range(len(ADS))
+    )
+
+    await event.respond(text)
+
+    raise StopPropagation
+
+
+@bot.on(NewMessage(pattern=r'/change_ad_(?P<index>[0-4]) (?P<new_ad>.+)'))
+async def change_ad_handler(event: MessageEvent):
+    """
+    Changes and saves in files/ads.json an specific ad.
+    """
+    global ADS
+
+    index = int(event.pattern_match['index'])
+    new_ad = event.pattern_match['new_ad']
+    if new_ad == '-':
+        new_ad = ''
+
+    with open('files/ads.json', 'w', encoding='utf8') as f:
+        ADS[index] = new_ad
+        json.dump(ADS, f, indent=4)
+
+    await event.respond(f'Ad saved:\n{new_ad}')
+
+    raise StopPropagation
 
 
 @bot.on(NewMessage(pattern='/session'))
