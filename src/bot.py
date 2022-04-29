@@ -12,11 +12,11 @@ from telethon.events import NewMessage, CallbackQuery, StopPropagation, \
     InlineQuery
 from telethon.tl.types import InputWebDocument
 from telethon.errors.rpcerrorlist import MediaCaptionTooLongError, \
-    WebpageMediaEmptyError, UserIsBlockedError
+    WebpageMediaEmptyError, UserIsBlockedError, PeerIdInvalidError, \
+    UserIsBotError
 from python_filmaffinity import FilmAffinity
 from python_filmaffinity.exceptions import FilmAffinityConnectionError
-from redis import Redis
-from requests_cache import CachedSession, RedisCache
+import edgedb
 
 import keyboards as kbs
 from bot_types import MessageEvent, CallbackMessageEventLike
@@ -48,16 +48,12 @@ logging.basicConfig(
 urllib3.disable_warnings()
 bot.start(bot_token=BOT_TOKEN)
 
-redis = Redis(REDIS_HOST)
-
-# FA cache
-cache_session = CachedSession(backend=RedisCache(connection=redis))
 # Spanish FA client
-fa_es = FilmAffinity(lang='es', cache_backend='redis')
-fa_es.session = cache_session
+fa_es = FilmAffinity(lang='es', cache_path='files/')
 # English FA client
-fa_en = FilmAffinity(lang='en', cache_backend='redis')
-fa_en.session = cache_session
+fa_en = FilmAffinity(lang='en', cache_path='files/')
+
+db_client = edgedb.create_async_client()
 
 
 @bot.on(CallbackQuery(pattern=rb'delete(_(?P<msg_1>\d+))?'))
@@ -86,17 +82,19 @@ async def i18n_handler(event: CallbackMessageEventLike):
     """
     Sets the default language for this event.
     """
-    lang = await bot.loop.run_in_executor(
-        None, partial(redis.get, f'lang-{event.sender_id}')
+    user_set = await db_client.query(
+        'select User {lang} filter .tid = <int64>$tid',
+        tid=event.sender_id
     )
 
-    if lang is None:
+    if not user_set:
         lang = 'es'
-        await bot.loop.run_in_executor(
-            None, partial(redis.set, f'lang-{event.sender_id}', lang)
+        await db_client.query(
+            'insert User {tid := <int64>$tid, lang := <str>$lang}',
+            tid=event.sender_id, lang=lang
         )
     else:
-        lang = lang.decode('utf8')
+        lang = user_set[0].lang
 
     event.lang = lang
     event.i18n = lambda key: TRANSLATIONS[key][lang]
@@ -490,8 +488,9 @@ async def select_language_handler(event: MessageEvent):
     """
     lang = event.pattern_match['lang'].decode('utf8')
 
-    await bot.loop.run_in_executor(
-        None, partial(redis.set, f'lang-{event.sender_id}', lang)
+    await db_client.query(
+        'update User filter .tid = <int64>$tid set {lang := <str>$lang}',
+        tid=event.sender_id, lang=lang
     )
 
     await event.edit(
@@ -619,45 +618,57 @@ async def session_handler(event: MessageEvent):
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern=r'/broadcast'))
+@bot.on(NewMessage(pattern=r'/broadcast (?P<lang>(es)|(en)|(all))'))
 async def broadcast_handler(event: MessageEvent):
     """
     /broadcast command handler.
     """
+    who = event.pattern_match['lang']
     msg = await event.get_reply_message()
 
     if msg:
-        # get the user ids from redis keys
-        lang_keys = await bot.loop.run_in_executor(
-            None, partial(redis.keys, 'lang-*')
-        )
-        user_ids = map(lambda x: int(x.split(b'-')[1]), lang_keys)
+        if who == 'all':
+            users = await db_client.query('select User {tid}')
+        else:
+            users = await db_client.query(
+                'select User {tid} filter .lang = <str>$lang',
+                lang=who
+            )
 
-        await event.respond(f'📢 Starting broadcast to `{len(lang_keys)}` users...')
+        text = (
+            '📢 Broadcasting to `{}` users...\n'
+            '🚫 Errors: `{}`\n'
+            '✅ Broadcasted: `{}/{}`'
+        )
+        admin_msg = await event.respond(text.format(who, 0, 0, len(users)))
 
         # broadcast the message
         count = 0
-        for user_id in user_ids:
+        errors = 0
+        for user in users:
             try:
                 await bot.send_message(
-                    entity=user_id,
+                    entity=user.tid,
                     message=msg
                 )
-            except (UserIsBlockedError, ValueError):
-                pass
+            except (UserIsBlockedError, ValueError, PeerIdInvalidError, UserIsBotError):
+                errors += 1
             except Exception as e:
+                errors += 1
                 await event.respond(
                     message=(
                         f'`{type(e)}: {e}`\n\n'
                         f'Broadcasted to `{count}` users. Sleeping `60` seconds...`'
                     )
                 )
-                await asyncio.sleep(60)
+                await asyncio.sleep(30)
             else:
-                count += 1
-                await asyncio.sleep(1)
-
-        await event.reply(f'✅ Done. Broadcasted message to `{count}` users.')
+                await asyncio.sleep(0.25)
+            count += 1
+            if count % 25 == 0 or count == len(users):
+                await admin_msg.edit(
+                    text=text.format(who, errors, count, len(users))
+                )
     else:
         await event.respond('⚠ You must reply to a message with /broadcast command.')
 
@@ -669,25 +680,17 @@ async def stats_handler(event: MessageEvent):
     """
     /stats command handler.
     """
-    lang_keys = await bot.loop.run_in_executor(
-        None, partial(redis.keys, 'lang-*')
-    )
-
-    es_count = 0
-    en_count = 0
-    for lk in lang_keys:
-        lang = await bot.loop.run_in_executor(
-            None, partial(redis.get, lk)
-        )
-        if lang == b'es':
-            es_count += 1
-        elif lang == b'en':
-            en_count += 1
+    es_count = (await db_client.query(
+        'select count((select User {lang} filter .lang = "es"))'
+    ))[0]
+    en_count = (await db_client.query(
+        'select count((select User {lang} filter .lang = "en"))'
+    ))[0]
 
     await event.respond(
         message=(
             '📊 Stats of the bot:\n'
-            f'👥 Total of users: `{len(lang_keys)}`\n'
+            f'👥 Total of users: `{es_count + en_count}`\n'
             f'🇪🇸 Spanish language: `{es_count}`\n'
             f'🇬🇧 English language: `{en_count}`'
         )
