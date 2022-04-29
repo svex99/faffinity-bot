@@ -51,13 +51,13 @@ bot.start(bot_token=BOT_TOKEN)
 redis = Redis(REDIS_HOST)
 
 # FA cache
-cache_session = CachedSession(backend=RedisCache(connection=redis))
+# cache_session = CachedSession(backend=RedisCache(connection=redis))
 # Spanish FA client
-fa_es = FilmAffinity(lang='es', cache_backend='redis')
-fa_es.session = cache_session
+fa_es = FilmAffinity(lang='es', cache_path='files/')
+# fa_es.session = cache_session
 # English FA client
-fa_en = FilmAffinity(lang='en', cache_backend='redis')
-fa_en.session = cache_session
+fa_en = FilmAffinity(lang='en', cache_path='files/')
+# fa_en.session = cache_session
 
 
 @bot.on(CallbackQuery(pattern=rb'delete(_(?P<msg_1>\d+))?'))

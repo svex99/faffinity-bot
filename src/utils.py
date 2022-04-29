@@ -54,4 +54,7 @@ class TelegramLogsHandler(StreamHandler):
 
     def emit(self, record):
         message = f'`{self.format(record)}`'
-        asyncio.create_task(self._emit(message))
+        try:
+            asyncio.get_event_loop().create_task(self._emit(message))
+        except RuntimeError:
+            pass
