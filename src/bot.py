@@ -6,6 +6,7 @@ import urllib3
 import json
 from functools import partial
 from datetime import datetime
+from pathlib import Path
 
 import dotenv
 import aiosqlite
@@ -33,6 +34,8 @@ REDIS_HOST = os.environ["REDIS_HOST"]
 NO_IMAGE = "https://www.filmaffinity.com/imgs/movies/noimgfull.jpg"
 TRANSLATIONS = json.load(open("files/i18n_messages.json"))
 ADS = json.load(open("files/ads.json", encoding="utf8"))
+START_TIME = datetime.now()
+MOVIES_SEEN = 0
 
 bot = TelegramClient("files/faffinity-bot", API_ID, API_HASH)
 
@@ -248,6 +251,9 @@ async def movie_handler(event: CallbackMessageEventLike):
     The movie id can be received from a click in an inline button or a link
     to the bot with the parameter start properly set.
     """
+    global MOVIES_SEEN
+    MOVIES_SEEN += 1
+
     _ = event.i18n
     fa = event.fa_client
     mid = event.pattern_match["id"]
@@ -675,12 +681,22 @@ async def stats_handler(event: MessageEvent):
     async with db_conn.execute("SELECT COUNT() FROM user WHERE lang = 'en'") as cursor:
         (en_count, ) = await cursor.fetchone()
 
+    uptime = str(datetime.now() - START_TIME).split(".")[0]
+
+    if (cache := Path("files/cache-film-affinity.sqlite")).exists():
+        cache_size = round(cache.stat().st_size / 1024 / 1024, 2)
+    else:
+        cache_size = 0
+
     await event.respond(
         message=(
             "📊 Stats of the bot:\n"
             f"👥 Total of users: `{total_count}`\n"
             f"🇪🇸 Spanish language: `{es_count}`\n"
-            f"🇬🇧 English language: `{en_count}`"
+            f"🇬🇧 English language: `{en_count}`\n"
+            f"👀 Movies seen: `{MOVIES_SEEN}`\n"
+            f"💾 Cache size: `{cache_size} MB`\n"
+            f"⏱ Bot uptime: `{uptime}`\n"
         )
     )
 
