@@ -4,8 +4,8 @@ import sqlite3
 from pathlib import Path
 
 
-DB = Path("files/bot-db.sqlite3")
-SESSION_DB = Path("files/faffinity-bot.session")
+DB = Path("data/bot-db.sqlite")
+SESSION_DB = Path("data/faffinity-bot.session")
 
 
 if not DB.is_file():
