@@ -22,9 +22,9 @@ def humanize(data: FAMovie):
                         if entry not in clean_list:
                             clean_list.append(entry)
 
-                    data[key] = ', '.join(entry for entry in clean_list)
+                    data[key] = ", ".join(entry for entry in clean_list)
         else:
-            data[key] = '`-`'
+            data[key] = "`-`"
 
     return data
 
@@ -33,7 +33,7 @@ def get_random_ad(_: Callable, ads: List[str]) -> str:
     """
     Returns text of a random ad from files/ads.json or the default ad text.
     """
-    return '\n\n' + (random.choice(ads) or _('default_ad'))
+    return "\n\n" + (random.choice(ads) or _("default_ad"))
 
 
 class TelegramLogsHandler(StreamHandler):
@@ -53,7 +53,7 @@ class TelegramLogsHandler(StreamHandler):
             pass
 
     def emit(self, record):
-        message = f'`{self.format(record)}`'
+        message = f"`{self.format(record)}`"
         try:
             asyncio.get_event_loop().create_task(self._emit(message))
         except RuntimeError:
