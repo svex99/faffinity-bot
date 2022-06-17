@@ -30,14 +30,17 @@ API_ID = int(os.environ["API_ID"])
 API_HASH = os.environ["API_HASH"]
 BOT_TOKEN = os.environ["BOT_TOKEN"]
 ADMIN_ID = int(os.environ["ADMIN_ID"])
-REDIS_HOST = os.environ["REDIS_HOST"]
+SESSION = Path("data/faffinity-bot.session")
+DB = Path("data/bot-db.sqlite")
 NO_IMAGE = "https://www.filmaffinity.com/imgs/movies/noimgfull.jpg"
 TRANSLATIONS = json.load(open("files/i18n_messages.json"))
-ADS = json.load(open("files/ads.json", encoding="utf8"))
+ADS_FILE = Path("files/ads.json")
+with ADS_FILE.open(encoding="utf8") as ads_file:
+    ADS = json.load(ads_file)
 START_TIME = datetime.now()
 MOVIES_SEEN = 0
 
-bot = TelegramClient("files/faffinity-bot", API_ID, API_HASH)
+bot = TelegramClient(str(SESSION), API_ID, API_HASH)
 
 logging.basicConfig(
     format="[%(levelname)s/%(asctime)s] %(name)s: %(message)s",
@@ -52,9 +55,9 @@ urllib3.disable_warnings()
 bot.start(bot_token=BOT_TOKEN)
 
 # Spanish FA client
-fa_es = FilmAffinity(lang="es", cache_path="files/")
+fa_es = FilmAffinity(lang="es", cache_path="data")
 # English FA client
-fa_en = FilmAffinity(lang="en", cache_path="files/")
+fa_en = FilmAffinity(lang="en", cache_path="data")
 db_conn: aiosqlite.Connection | None = None
 
 
@@ -600,9 +603,9 @@ async def change_ad_handler(event: MessageEvent):
     if new_ad == "-":
         new_ad = ""
 
-    with open("files/ads.json", "w", encoding="utf8") as f:
-        ADS[index] = new_ad
-        json.dump(ADS, f, indent=4)
+    ADS[index] = new_ad
+    with ADS_FILE.open("w", encoding="utf8") as ads_file:
+        json.dump(ADS, ads_file, indent=4)
 
     await event.respond(f"Ad saved:\n{new_ad}")
 
@@ -618,7 +621,7 @@ async def session_handler(event: MessageEvent):
     format_ = "%Y-%m-%d %H:%M:%S %Z%z"
     await event.respond(
         message=f"`{datetime.now().strftime(format_)}`",
-        file="files/faffinity-bot.session"
+        file=SESSION
     )
 
     raise StopPropagation
@@ -683,7 +686,7 @@ async def stats_handler(event: MessageEvent):
 
     uptime = str(datetime.now() - START_TIME).split(".")[0]
 
-    if (cache := Path("files/cache-film-affinity.sqlite")).exists():
+    if (cache := Path("data/cache-film-affinity.sqlite")).exists():
         cache_size = round(cache.stat().st_size / 1024 / 1024, 2)
     else:
         cache_size = 0
@@ -705,7 +708,7 @@ async def stats_handler(event: MessageEvent):
 
 async def main():
     global db_conn
-    db_conn = await aiosqlite.connect("files/bot-db.sqlite3")
+    db_conn = await aiosqlite.connect(str(DB))
     await bot.run_until_disconnected()
 
 
