@@ -25,19 +25,19 @@ from utils import humanize, TelegramLogsHandler, get_random_ad
 
 dotenv.load_dotenv()
 
-API_ID = int(os.environ['API_ID'])
-API_HASH = os.environ['API_HASH']
-BOT_TOKEN = os.environ['BOT_TOKEN']
-ADMIN_ID = int(os.environ['ADMIN_ID'])
-REDIS_HOST = os.environ['REDIS_HOST']
-NO_IMAGE = 'https://www.filmaffinity.com/imgs/movies/noimgfull.jpg'
-TRANSLATIONS = json.load(open('files/i18n_messages.json'))
-ADS = json.load(open('files/ads.json', encoding='utf8'))
+API_ID = int(os.environ["API_ID"])
+API_HASH = os.environ["API_HASH"]
+BOT_TOKEN = os.environ["BOT_TOKEN"]
+ADMIN_ID = int(os.environ["ADMIN_ID"])
+REDIS_HOST = os.environ["REDIS_HOST"]
+NO_IMAGE = "https://www.filmaffinity.com/imgs/movies/noimgfull.jpg"
+TRANSLATIONS = json.load(open("files/i18n_messages.json"))
+ADS = json.load(open("files/ads.json", encoding="utf8"))
 
-bot = TelegramClient('files/faffinity-bot', API_ID, API_HASH)
+bot = TelegramClient("files/faffinity-bot", API_ID, API_HASH)
 
 logging.basicConfig(
-    format='[%(levelname)s/%(asctime)s] %(name)s: %(message)s',
+    format="[%(levelname)s/%(asctime)s] %(name)s: %(message)s",
     level=logging.INFO,
     handlers=[
         logging.StreamHandler(),
@@ -49,18 +49,18 @@ urllib3.disable_warnings()
 bot.start(bot_token=BOT_TOKEN)
 
 # Spanish FA client
-fa_es = FilmAffinity(lang='es', cache_path='files/')
+fa_es = FilmAffinity(lang="es", cache_path="files/")
 # English FA client
-fa_en = FilmAffinity(lang='en', cache_path='files/')
+fa_en = FilmAffinity(lang="en", cache_path="files/")
 db_conn: aiosqlite.Connection | None = None
 
 
-@bot.on(CallbackQuery(pattern=rb'delete(_(?P<msg_1>\d+))?'))
+@bot.on(CallbackQuery(pattern=rb"delete(_(?P<msg_1>\d+))?"))
 async def delete_handler(event: CallbackQuery.Event):
     """
     Deletes the message of the button clicked and max 2 messages more.
     """
-    msg_1 = event.pattern_match['msg_1']
+    msg_1 = event.pattern_match["msg_1"]
 
     messages_to_delete = [event.message_id]
     if msg_1 is not None:
@@ -88,7 +88,7 @@ async def i18n_handler(event: CallbackMessageEventLike):
         (lang, ) = (await cursor.fetchone()) or (None, )
 
     if lang is None:
-        lang = 'es'
+        lang = "es"
         await db_conn.execute(
             "INSERT INTO user (tid, lang) VALUES (?, ?)",
             (event.sender_id, lang, )
@@ -97,7 +97,7 @@ async def i18n_handler(event: CallbackMessageEventLike):
 
     event.lang = lang
     event.i18n = lambda key: TRANSLATIONS[key][lang]
-    if lang == 'es':
+    if lang == "es":
         event.fa_client = fa_es
     else:
         event.fa_client = fa_en
@@ -116,8 +116,8 @@ async def inline_search_handler(event: InlineQuery.Event):
     except FilmAffinityConnectionError as e:
         await event.answer([
             builder.article(
-                title=_('fa_error'),
-                text=_('fa_error')
+                title=_("fa_error"),
+                text=_("fa_error")
             )
         ])
         logging.error(e)
@@ -125,43 +125,43 @@ async def inline_search_handler(event: InlineQuery.Event):
         if result:
             await event.answer([
                 builder.article(
-                    title=movie['title'],
-                    text=_('inline_result').format(**humanize(movie)),
+                    title=movie["title"],
+                    text=_("inline_result").format(**humanize(movie)),
                     thumb=InputWebDocument(
-                        url=movie['poster'],
+                        url=movie["poster"],
                         size=1,
-                        mime_type='image/jpg',
+                        mime_type="image/jpg",
                         attributes=[]
-                    ) if movie['poster'] != '/imgs/movies/noimgfull.jpg' else None,
+                    ) if movie["poster"] != "/imgs/movies/noimgfull.jpg" else None,
                     link_preview=False,
-                    buttons=kbs.inline_details(_, movie['id'])
+                    buttons=kbs.inline_details(_, movie["id"])
                 )
                 for movie in result
             ])
         else:
             await event.answer([
                 builder.article(
-                    title=_('no_matches').format(query=event.text),
-                    text=_('no_matches').format(query=event.text),
+                    title=_("no_matches").format(query=event.text),
+                    text=_("no_matches").format(query=event.text),
                 )
             ])
 
 
-@bot.on(NewMessage(pattern=r'/start( id_(?P<id>\d+))?'))
+@bot.on(NewMessage(pattern=r"/start( id_(?P<id>\d+))?"))
 async def start_handler(event: MessageEvent):
     """
     /start command handler.
     """
     _ = event.i18n
-    mid = event.pattern_match['id']
+    mid = event.pattern_match["id"]
 
     if not mid:
-        await event.respond(_('start'))
+        await event.respond(_("start"))
 
         raise StopPropagation
 
 
-@bot.on(NewMessage(pattern='/help'))
+@bot.on(NewMessage(pattern="/help"))
 async def help_handler(event: MessageEvent):
     """
     /help command handler.
@@ -169,22 +169,22 @@ async def help_handler(event: MessageEvent):
     _ = event.i18n
 
     admin_help = (
-        '\n\n##### Admin help #####\n'
-        '/session - get the session file.\n'
-        '/broadcast - broadcast a message to users of the bot.\n'
-        '/stats - stats of the bot.\n'
-        '/ads - list of active ads.\n'
-    ) if event.sender_id == ADMIN_ID else ''
+        "\n\n##### Admin help #####\n"
+        "/session - get the session file.\n"
+        "/broadcast - broadcast a message to users of the bot.\n"
+        "/stats - stats of the bot.\n"
+        "/ads - list of active ads.\n"
+    ) if event.sender_id == ADMIN_ID else ""
 
     await event.respond(
-        message=_('help') + admin_help,
+        message=_("help") + admin_help,
         buttons=kbs.hide(_)
     )
 
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern='/support'))
+@bot.on(NewMessage(pattern="/support"))
 async def support_handler(event: MessageEvent):
     """
     /support command handler.
@@ -192,7 +192,7 @@ async def support_handler(event: MessageEvent):
     _ = event.i18n
 
     await event.respond(
-        message=_('support'),
+        message=_("support"),
         buttons=kbs.support(_),
         link_preview=False
     )
@@ -200,9 +200,9 @@ async def support_handler(event: MessageEvent):
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern=r'(?P<title>[^/].*)'))
-@bot.on(NewMessage(pattern=r'/cast (?P<cast>.+)'))
-@bot.on(NewMessage(pattern=r'/director (?P<director>.+)'))
+@bot.on(NewMessage(pattern=r"(?P<title>[^/].*)"))
+@bot.on(NewMessage(pattern=r"/cast (?P<cast>.+)"))
+@bot.on(NewMessage(pattern=r"/director (?P<director>.+)"))
 async def search_handler(event: MessageEvent):
     """
     Handles queries by title, cast and director.
@@ -216,22 +216,22 @@ async def search_handler(event: MessageEvent):
             None, partial(fa.search, 20, **query)
         )
     except FilmAffinityConnectionError as e:
-        await event.respond(_('fa_error'))
+        await event.respond(_("fa_error"))
         logging.error(e)
     else:
         if result:
             await event.respond(
-                message=_('query_results'),
+                message=_("query_results"),
                 buttons=kbs.search_result(_, result)
             )
         else:
             await event.respond(
-                message=_('no_matches').format(
+                message=_("no_matches").format(
                     query=(
-                        query.get('title') or
-                        query.get('cast') or
-                        query.get('director') or
-                        '`-`'
+                        query.get("title") or
+                        query.get("cast") or
+                        query.get("director") or
+                        "`-`"
                     )
                 )
             )
@@ -239,38 +239,38 @@ async def search_handler(event: MessageEvent):
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern=r'/start id_(?P<id>\d+)'))
-@bot.on(CallbackQuery(pattern=rb'film_(?P<id>\d+)'))
+@bot.on(NewMessage(pattern=r"/start id_(?P<id>\d+)"))
+@bot.on(CallbackQuery(pattern=rb"film_(?P<id>\d+)"))
 async def movie_handler(event: CallbackMessageEventLike):
     """
     Shows the details about an specific movie.
 
     The movie id can be received from a click in an inline button or a link
-    to the bot with the parameter start properly setted.
+    to the bot with the parameter start properly set.
     """
     _ = event.i18n
     fa = event.fa_client
-    mid = event.pattern_match['id']
+    mid = event.pattern_match["id"]
     if isinstance(mid, bytes):
-        mid = mid.decode('utf8')
+        mid = mid.decode("utf8")
 
     try:
         movie = await bot.loop.run_in_executor(
-            None, partial(fa.get_movie, **{'id': mid})
+            None, partial(fa.get_movie, **{"id": mid})
         )
     except FilmAffinityConnectionError as e:
-        await event.respond(_('fa_error'))
+        await event.respond(_("fa_error"))
         logging.error(e)
     else:
-        poster = movie['poster'] or NO_IMAGE
+        poster = movie["poster"] or NO_IMAGE
         humanize(movie)
-        message = _('movie_template').format(**movie) + get_random_ad(_, ADS)
+        message = _("movie_template").format(**movie) + get_random_ad(_, ADS)
 
         try:
             await event.respond(
                 message=message,
                 file=poster,
-                buttons=kbs.movie_keyboard(_, movie['id']),
+                buttons=kbs.movie_keyboard(_, movie["id"]),
                 link_preview=False
             )
         except MediaCaptionTooLongError:
@@ -281,7 +281,7 @@ async def movie_handler(event: CallbackMessageEventLike):
                 message=message,
                 buttons=kbs.movie_keyboard(
                     _,
-                    mid=movie['id'],
+                    mid=movie["id"],
                     linked_msg_ids=[poster_msg.id]
                 ),
                 link_preview=False
@@ -290,24 +290,24 @@ async def movie_handler(event: CallbackMessageEventLike):
     raise StopPropagation
 
 
-@bot.on(CallbackQuery(pattern=rb'synopsis_(?P<id>\d+)'))
+@bot.on(CallbackQuery(pattern=rb"synopsis_(?P<id>\d+)"))
 async def synopsis_handler(event: CallbackQuery.Event):
     _ = event.i18n
     fa = event.fa_client
-    mid = event.pattern_match['id'].decode('utf8')
+    mid = event.pattern_match["id"].decode("utf8")
 
     try:
         movie = await bot.loop.run_in_executor(
-            None, partial(fa.get_movie, **{'id': mid})
+            None, partial(fa.get_movie, **{"id": mid})
         )
     except FilmAffinityConnectionError as e:
-        await event.respond(_('fa_error'))
+        await event.respond(_("fa_error"))
         logging.error(e)
     else:
         await event.respond(
             message=(
-                f'ℹ **{_("Synopsis")}: '
-                '{title}** ℹ\n\n{description}'.format(**movie) +
+                f"ℹ **{_('Synopsis')}: "
+                "{title}** ℹ\n\n{description}".format(**movie) +
                 get_random_ad(_, ADS)
             ),
             buttons=kbs.hide(_),
@@ -317,35 +317,35 @@ async def synopsis_handler(event: CallbackQuery.Event):
     raise StopPropagation
 
 
-@bot.on(CallbackQuery(pattern=rb'awards_(?P<id>\d+)'))
+@bot.on(CallbackQuery(pattern=rb"awards_(?P<id>\d+)"))
 async def awards_handler(event: CallbackQuery.Event):
     lang = event.lang
     _ = event.i18n
     fa = event.fa_client
-    mid = event.pattern_match['id'].decode('utf8')
+    mid = event.pattern_match["id"].decode("utf8")
 
     try:
         movie = await bot.loop.run_in_executor(
-            None, partial(fa.get_movie, **{'id': mid})
+            None, partial(fa.get_movie, **{"id": mid})
         )
     except FilmAffinityConnectionError as e:
-        await event.respond(_('fa_error'))
+        await event.respond(_("fa_error"))
         logging.error(e)
     else:
-        awards = movie['awards']
+        awards = movie["awards"]
         if awards:
-            awards_text = f'🏆 **{_("Awards")}: {movie["title"]}** 🏆\n\n'
-            final = ''
+            awards_text = f"🏆 **{_('Awards')}: {movie['title']}** 🏆\n\n"
+            final = ""
 
             for a in awards:
-                if a['year'].isalnum():
-                    awards_text += f'🔸 `{a["year"]}`: {a["award"]}\n'
+                if a["year"].isalnum():
+                    awards_text += f"🔸 `{a['year']}`: {a['award']}\n"
                 else:
-                    final = f'↗ {a["year"]}'
+                    final = f"↗ {a['year']}"
 
             awards_text += (
-                f'\n[{final if final else _("see_at_fa")}]'
-                f'(https://www.filmaffinity.com/{lang}/film{movie["id"]}.html)'
+                f"\n[{final if final else _('see_at_fa')}]"
+                f"(https://www.filmaffinity.com/{lang}/film{movie['id']}.html)"
             )
 
             await event.respond(
@@ -354,45 +354,45 @@ async def awards_handler(event: CallbackQuery.Event):
                 link_preview=False
             )
         else:
-            await event.respond(_('no_awards'))
+            await event.respond(_("no_awards"))
 
     raise StopPropagation
 
 
-@bot.on(CallbackQuery(pattern=rb'reviews_(?P<id>\d+)'))
+@bot.on(CallbackQuery(pattern=rb"reviews_(?P<id>\d+)"))
 async def reviews_handler(event: CallbackQuery.Event):
     lang = event.lang
     _ = event.i18n
     fa = event.fa_client
-    mid = event.pattern_match['id'].decode('utf8')
+    mid = event.pattern_match["id"].decode("utf8")
 
     try:
         movie = await bot.loop.run_in_executor(
-            None, partial(fa.get_movie, **{'id': mid})
+            None, partial(fa.get_movie, **{"id": mid})
         )
     except FilmAffinityConnectionError as e:
-        await event.respond(_('fa_error'))
+        await event.respond(_("fa_error"))
         logging.error(e)
     else:
-        reviews = movie['reviews']
+        reviews = movie["reviews"]
         if reviews:
             reviews_text = (
-                f'💭 **{_("Reviews")}: {movie["title"]}** 💭\n'
+                f"💭 **{_('Reviews')}: {movie['title']}** 💭\n"
             )
 
             for r in reviews:
                 # remove `[` and `]` for don't break telegram markdown
-                actual_review = r['review'].replace('[', '')
-                actual_review = actual_review.replace(']', '')
+                actual_review = r["review"].replace("[", "")
+                actual_review = actual_review.replace("]", "")
                 reviews_text += (
-                    f'\n👤 [{r["author"]}]'
-                    f'({r["url"] or f"www.filmaffinity.com/{lang}/film{mid}.html"})\n'
-                    f'💭 __{actual_review}__\n'
+                    f"\n👤 [{r['author']}]"
+                    f"({r['url'] or f'www.filmaffinity.com/{lang}/film{mid}.html'})\n"
+                    f"💭 __{actual_review}__\n"
                 )
 
             reviews_text += (
-                f'\n[{_("see_at_fa")}]'
-                f'(www.filmaffinity.com/{lang}/pro-reviews.php?movie-id={mid})'
+                f"\n[{_('see_at_fa')}]"
+                f"(www.filmaffinity.com/{lang}/pro-reviews.php?movie-id={mid})"
             )
 
             await event.respond(
@@ -401,12 +401,12 @@ async def reviews_handler(event: CallbackQuery.Event):
                 link_preview=False
             )
         else:
-            await event.respond(_('no_reviews'))
+            await event.respond(_("no_reviews"))
 
     raise StopPropagation
 
 
-@bot.on(CallbackQuery(pattern=rb'images_(?P<id>\d+)'))
+@bot.on(CallbackQuery(pattern=rb"images_(?P<id>\d+)"))
 async def images_handler(event: CallbackQuery.Event):
     """
     Sends images of a movie. Sends as max 30 images in three messages with
@@ -414,19 +414,19 @@ async def images_handler(event: CallbackQuery.Event):
     """
     _ = event.i18n
     fa = event.fa_client
-    mid = event.pattern_match['id'].decode('utf8')
+    mid = event.pattern_match["id"].decode("utf8")
 
     try:
         movie = await bot.loop.run_in_executor(
-            None, partial(fa.get_movie, **{'id': mid, 'images': True})
+            None, partial(fa.get_movie, **{"id": mid, "images": True})
         )
     except FilmAffinityConnectionError as e:
-        await event.respond(_('fa_error'))
+        await event.respond(_("fa_error"))
         logging.error(e)
     else:
         images = [
-            still['image'] for still in movie['images']['stills']
-            if still['image']
+            still["image"] for still in movie["images"]["stills"]
+            if still["image"]
         ]
         group_0, group_1, group_2 = images[:10], images[10:20], images[20:30]
 
@@ -455,37 +455,37 @@ async def images_handler(event: CallbackQuery.Event):
                     pass
 
             if not any((result_0, result_1, result_2, )):
-                await event.respond(_('no_images'))
+                await event.respond(_("no_images"))
                 # notify admin for debugging
                 await bot.send_message(
                     entity=ADMIN_ID,
-                    message=f'`WebpageMediaEmptyError in movies_handler: {mid}`'
+                    message=f"`WebpageMediaEmptyError in movies_handler: {mid}`"
                 )
         else:
-            await event.respond(_('no_images'))
+            await event.respond(_("no_images"))
 
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern='/language'))
+@bot.on(NewMessage(pattern="/language"))
 async def language_handler(event: MessageEvent):
     """
     Sends a keyboard for language configuration.
     """
     await event.respond(
-        message=TRANSLATIONS['select_lang']['es'],
+        message=TRANSLATIONS["select_lang"]["es"],
         buttons=kbs.select_lang()
     )
 
     raise StopPropagation
 
 
-@bot.on(CallbackQuery(pattern=b'lang_(?P<lang>es|en)'))
+@bot.on(CallbackQuery(pattern=b"lang_(?P<lang>es|en)"))
 async def select_language_handler(event: MessageEvent):
     """
     Handles the language selection by the user.
     """
-    lang = event.pattern_match['lang'].decode('utf8')
+    lang = event.pattern_match["lang"].decode("utf8")
 
     await db_conn.execute(
         "UPDATE user SET lang = ? WHERE tid = ?",
@@ -494,13 +494,13 @@ async def select_language_handler(event: MessageEvent):
     await db_conn.commit()
 
     await event.edit(
-        text=TRANSLATIONS['lang_selected'][lang]
+        text=TRANSLATIONS["lang_selected"][lang]
     )
 
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern='/top'))
+@bot.on(NewMessage(pattern="/top"))
 async def top_handler(event: MessageEvent):
     """
     /top command handler.
@@ -508,28 +508,28 @@ async def top_handler(event: MessageEvent):
     _ = event.i18n
 
     await event.respond(
-        message=_('select_top'),
+        message=_("select_top"),
         buttons=kbs.tops(_)
     )
 
     raise StopPropagation
 
 
-@bot.on(CallbackQuery(pattern=rb'top_(?P<service>\w+)'))
+@bot.on(CallbackQuery(pattern=rb"top_(?P<service>\w+)"))
 async def select_language_handler(event: MessageEvent):
     """
     Handles the top selection by the user.
     """
     _ = event.i18n
     fa: FilmAffinity = event.fa_client
-    service = event.pattern_match['service'].decode('utf8')
+    service = event.pattern_match["service"].decode("utf8")
 
     top_services = {
-        'HBO': fa.top_hbo,
-        'Netflix': fa.top_netflix,
-        'Filmin': fa.top_filmin,
-        'Movistar': fa.top_movistar,
-        'Rakuten': fa.top_rakuten,
+        "HBO": fa.top_hbo,
+        "Netflix": fa.top_netflix,
+        "Filmin": fa.top_filmin,
+        "Movistar": fa.top_movistar,
+        "Rakuten": fa.top_rakuten,
     }
 
     try:
@@ -537,14 +537,14 @@ async def select_language_handler(event: MessageEvent):
             None, partial(top_services[service], 40)
         )
     except FilmAffinityConnectionError as e:
-        await event.respond(_('fa_error'))
+        await event.respond(_("fa_error"))
         logging.error(e)
     else:
-        text = f'🔝 Top {service} 🔝\n\n' + '\n\n'.join(
+        text = f"🔝 Top {service} 🔝\n\n" + "\n\n".join(
             [
-                '`%2d.` ' % i + (
-                    '[{title}](https://t.me/faffinitybot?start=id_{id})\n'
-                    '📅 {year}      ⭐ {rating}/10'
+                "`%2d.` " % i + (
+                    "[{title}](https://t.me/faffinitybot?start=id_{id})\n"
+                    "📅 {year}      ⭐ {rating}/10"
                 ).format(**movie)
                 for movie, i in zip(result, range(1, 50))
             ]
@@ -568,13 +568,13 @@ async def admin_handler(event: MessageEvent):
         raise StopPropagation
 
 
-@bot.on(NewMessage(pattern='/ads'))
+@bot.on(NewMessage(pattern="/ads"))
 async def list_ads_handler(event: MessageEvent):
     """
     Lists the ads saved in files/ads.json.
     """
-    text = '\n`---------------`\n'.join(
-        f'/change_ad_{i}\n{ADS[i]}' for i in range(len(ADS))
+    text = "\n`---------------`\n".join(
+        f"/change_ad_{i}\n{ADS[i]}" for i in range(len(ADS))
     )
 
     await event.respond(text)
@@ -582,28 +582,28 @@ async def list_ads_handler(event: MessageEvent):
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern=r'/change_ad_(?P<index>[0-4]) (?P<new_ad>.+)'))
+@bot.on(NewMessage(pattern=r"/change_ad_(?P<index>[0-4]) (?P<new_ad>.+)"))
 async def change_ad_handler(event: MessageEvent):
     """
     Changes and saves in files/ads.json an specific ad.
     """
     global ADS
 
-    index = int(event.pattern_match['index'])
-    new_ad = event.pattern_match['new_ad']
-    if new_ad == '-':
-        new_ad = ''
+    index = int(event.pattern_match["index"])
+    new_ad = event.pattern_match["new_ad"]
+    if new_ad == "-":
+        new_ad = ""
 
-    with open('files/ads.json', 'w', encoding='utf8') as f:
+    with open("files/ads.json", "w", encoding="utf8") as f:
         ADS[index] = new_ad
         json.dump(ADS, f, indent=4)
 
-    await event.respond(f'Ad saved:\n{new_ad}')
+    await event.respond(f"Ad saved:\n{new_ad}")
 
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern='/session'))
+@bot.on(NewMessage(pattern="/session"))
 async def session_handler(event: MessageEvent):
     """
     /session command handler.
@@ -611,14 +611,14 @@ async def session_handler(event: MessageEvent):
     """
     format_ = "%Y-%m-%d %H:%M:%S %Z%z"
     await event.respond(
-        message=f'`{datetime.now().strftime(format_)}`',
-        file='files/faffinity-bot.session'
+        message=f"`{datetime.now().strftime(format_)}`",
+        file="files/faffinity-bot.session"
     )
 
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern=r'/broadcast'))
+@bot.on(NewMessage(pattern=r"/broadcast"))
 async def broadcast_handler(event: MessageEvent):
     """
     /broadcast command handler.
@@ -626,7 +626,7 @@ async def broadcast_handler(event: MessageEvent):
     msg = await event.get_reply_message()
 
     if msg:
-        await event.respond(f'📢 Starting broadcast to users...')
+        await event.respond(f"📢 Starting broadcast to users...")
         count = 0
         errors = 0
 
@@ -643,10 +643,10 @@ async def broadcast_handler(event: MessageEvent):
                     errors += 1
                     await event.respond(
                         message=(
-                            f'Exception: `{type(e)}: {e}`\n\n'
-                            f'Broadcasted: `{count}`\n'
-                            f'Errors: `{errors}`\n\n'
-                            'Sleeping `60` seconds...'
+                            f"Exception: `{type(e)}: {e}`\n\n"
+                            f"Broadcasted: `{count}`\n"
+                            f"Errors: `{errors}`\n\n"
+                            "Sleeping `60` seconds..."
                         )
                     )
                     await asyncio.sleep(60)
@@ -654,14 +654,14 @@ async def broadcast_handler(event: MessageEvent):
                     count += 1
                     await asyncio.sleep(1)
 
-        await event.reply(f'✅ Done. Broadcasted message to `{count}` users. Errors `{errors}`.')
+        await event.reply(f"✅ Done. Broadcasted message to `{count}` users. Errors `{errors}`.")
     else:
-        await event.respond('⚠ You must reply to a message with /broadcast command.')
+        await event.respond("⚠ You must reply to a message with /broadcast command.")
 
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern=r'/stats'))
+@bot.on(NewMessage(pattern=r"/stats"))
 async def stats_handler(event: MessageEvent):
     """
     /stats command handler.
@@ -677,10 +677,10 @@ async def stats_handler(event: MessageEvent):
 
     await event.respond(
         message=(
-            '📊 Stats of the bot:\n'
-            f'👥 Total of users: `{total_count}`\n'
-            f'🇪🇸 Spanish language: `{es_count}`\n'
-            f'🇬🇧 English language: `{en_count}`'
+            "📊 Stats of the bot:\n"
+            f"👥 Total of users: `{total_count}`\n"
+            f"🇪🇸 Spanish language: `{es_count}`\n"
+            f"🇬🇧 English language: `{en_count}`"
         )
     )
 
@@ -689,10 +689,10 @@ async def stats_handler(event: MessageEvent):
 
 async def main():
     global db_conn
-    db_conn = await aiosqlite.connect('files/bot-db.sqlite3')
+    db_conn = await aiosqlite.connect("files/bot-db.sqlite3")
     await bot.run_until_disconnected()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
