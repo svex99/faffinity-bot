@@ -31,8 +31,14 @@ init-db-prod:
 		python3 cmd/init_db.py
 
 run-prod:
-	docker container run -it --rm \
+	docker container run -d \
 	--name fa-bot \
 	--restart always \
 	-v $PWD/data:/app/data \
 	svex/faffinity-bot
+
+logs:
+	docker container logs -f fa-bot
+
+down:
+	docker container rm -f fa-bot
