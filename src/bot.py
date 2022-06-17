@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import logging
 import asyncio
@@ -7,16 +8,15 @@ from functools import partial
 from datetime import datetime
 
 import dotenv
+import aiosqlite
 from telethon import TelegramClient
 from telethon.events import NewMessage, CallbackQuery, StopPropagation, \
     InlineQuery
 from telethon.tl.types import InputWebDocument
 from telethon.errors.rpcerrorlist import MediaCaptionTooLongError, \
-    WebpageMediaEmptyError, UserIsBlockedError
+    WebpageMediaEmptyError, UserIsBlockedError, UserIsBotError
 from python_filmaffinity import FilmAffinity
 from python_filmaffinity.exceptions import FilmAffinityConnectionError
-from redis import Redis
-from requests_cache import CachedSession, RedisCache
 
 import keyboards as kbs
 from bot_types import MessageEvent, CallbackMessageEventLike
@@ -48,16 +48,11 @@ logging.basicConfig(
 urllib3.disable_warnings()
 bot.start(bot_token=BOT_TOKEN)
 
-redis = Redis(REDIS_HOST)
-
-# FA cache
-cache_session = CachedSession(backend=RedisCache(connection=redis))
 # Spanish FA client
-fa_es = FilmAffinity(lang='es', cache_backend='redis')
-fa_es.session = cache_session
+fa_es = FilmAffinity(lang='es', cache_path='files/')
 # English FA client
-fa_en = FilmAffinity(lang='en', cache_backend='redis')
-fa_en.session = cache_session
+fa_en = FilmAffinity(lang='en', cache_path='files/')
+db_conn: aiosqlite.Connection | None = None
 
 
 @bot.on(CallbackQuery(pattern=rb'delete(_(?P<msg_1>\d+))?'))
@@ -86,17 +81,19 @@ async def i18n_handler(event: CallbackMessageEventLike):
     """
     Sets the default language for this event.
     """
-    lang = await bot.loop.run_in_executor(
-        None, partial(redis.get, f'lang-{event.sender_id}')
-    )
+    async with db_conn.execute(
+        "SELECT lang FROM user WHERE tid = ?",
+        (event.sender_id, )
+    ) as cursor:
+        (lang, ) = (await cursor.fetchone()) or (None, )
 
     if lang is None:
         lang = 'es'
-        await bot.loop.run_in_executor(
-            None, partial(redis.set, f'lang-{event.sender_id}', lang)
+        await db_conn.execute(
+            "INSERT INTO user (tid, lang) VALUES (?, ?)",
+            (event.sender_id, lang, )
         )
-    else:
-        lang = lang.decode('utf8')
+        await db_conn.commit()
 
     event.lang = lang
     event.i18n = lambda key: TRANSLATIONS[key][lang]
@@ -490,9 +487,11 @@ async def select_language_handler(event: MessageEvent):
     """
     lang = event.pattern_match['lang'].decode('utf8')
 
-    await bot.loop.run_in_executor(
-        None, partial(redis.set, f'lang-{event.sender_id}', lang)
+    await db_conn.execute(
+        "UPDATE user SET lang = ? WHERE tid = ?",
+        (lang, event.sender_id, )
     )
+    await db_conn.commit()
 
     await event.edit(
         text=TRANSLATIONS['lang_selected'][lang]
@@ -627,37 +626,35 @@ async def broadcast_handler(event: MessageEvent):
     msg = await event.get_reply_message()
 
     if msg:
-        # get the user ids from redis keys
-        lang_keys = await bot.loop.run_in_executor(
-            None, partial(redis.keys, 'lang-*')
-        )
-        user_ids = map(lambda x: int(x.split(b'-')[1]), lang_keys)
-
-        await event.respond(f'📢 Starting broadcast to `{len(lang_keys)}` users...')
-
-        # broadcast the message
+        await event.respond(f'📢 Starting broadcast to users...')
         count = 0
-        for user_id in user_ids:
-            try:
-                await bot.send_message(
-                    entity=user_id,
-                    message=msg
-                )
-            except (UserIsBlockedError, ValueError):
-                pass
-            except Exception as e:
-                await event.respond(
-                    message=(
-                        f'`{type(e)}: {e}`\n\n'
-                        f'Broadcasted to `{count}` users. Sleeping `60` seconds...`'
-                    )
-                )
-                await asyncio.sleep(60)
-            else:
-                count += 1
-                await asyncio.sleep(1)
+        errors = 0
 
-        await event.reply(f'✅ Done. Broadcasted message to `{count}` users.')
+        async with db_conn.execute("SELECT tid FROM user") as cursor:
+            async for (tid, ) in cursor:
+                try:
+                    await bot.send_message(
+                        entity=tid,
+                        message=msg
+                    )
+                except (UserIsBlockedError, ValueError, UserIsBotError):
+                    errors += 1
+                except Exception as e:
+                    errors += 1
+                    await event.respond(
+                        message=(
+                            f'Exception: `{type(e)}: {e}`\n\n'
+                            f'Broadcasted: `{count}`\n'
+                            f'Errors: `{errors}`\n\n'
+                            'Sleeping `60` seconds...'
+                        )
+                    )
+                    await asyncio.sleep(60)
+                else:
+                    count += 1
+                    await asyncio.sleep(1)
+
+        await event.reply(f'✅ Done. Broadcasted message to `{count}` users. Errors `{errors}`.')
     else:
         await event.respond('⚠ You must reply to a message with /broadcast command.')
 
@@ -669,25 +666,19 @@ async def stats_handler(event: MessageEvent):
     """
     /stats command handler.
     """
-    lang_keys = await bot.loop.run_in_executor(
-        None, partial(redis.keys, 'lang-*')
-    )
+    async with db_conn.execute("SELECT COUNT() FROM user") as cursor:
+        (total_count, ) = await cursor.fetchone()
 
-    es_count = 0
-    en_count = 0
-    for lk in lang_keys:
-        lang = await bot.loop.run_in_executor(
-            None, partial(redis.get, lk)
-        )
-        if lang == b'es':
-            es_count += 1
-        elif lang == b'en':
-            en_count += 1
+    async with db_conn.execute("SELECT COUNT() FROM user WHERE lang = 'es'") as cursor:
+        (es_count, ) = await cursor.fetchone()
+
+    async with db_conn.execute("SELECT COUNT() FROM user WHERE lang = 'en'") as cursor:
+        (en_count, ) = await cursor.fetchone()
 
     await event.respond(
         message=(
             '📊 Stats of the bot:\n'
-            f'👥 Total of users: `{len(lang_keys)}`\n'
+            f'👥 Total of users: `{total_count}`\n'
             f'🇪🇸 Spanish language: `{es_count}`\n'
             f'🇬🇧 English language: `{en_count}`'
         )
@@ -697,8 +688,11 @@ async def stats_handler(event: MessageEvent):
 
 
 async def main():
+    global db_conn
+    db_conn = await aiosqlite.connect('files/bot-db.sqlite3')
     await bot.run_until_disconnected()
 
 
 if __name__ == '__main__':
-    asyncio.get_event_loop().run_until_complete(main())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())

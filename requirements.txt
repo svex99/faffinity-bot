@@ -1,4 +1,4 @@
 python-dotenv==0.18.0
 python-filmaffinity==0.0.19
-redis==3.5.3
 Telethon==1.23.0
+aiosqlite==0.17.0
