@@ -418,8 +418,7 @@ async def reviews_handler(event: CallbackQuery.Event):
 @bot.on(CallbackQuery(pattern=rb"images_(?P<id>\d+)"))
 async def images_handler(event: CallbackQuery.Event):
     """
-    Sends images of a movie. Sends as max 30 images in three messages with
-    10 images each.
+    Sends images of a movie. Sends as max 10 images.
     """
     _ = event.i18n
     fa = event.fa_client
@@ -437,39 +436,12 @@ async def images_handler(event: CallbackQuery.Event):
             still["image"] for still in movie["images"]["stills"]
             if still["image"]
         ]
-        group_0, group_1, group_2 = images[:10], images[10:20], images[20:30]
-
         if images:
-            result_0, result_1, result_2 = None, None, None
-
-            # send first bulk of images
-            if group_0:
-                try:
-                    result_0 = await event.respond(file=group_0)
-                except WebpageMediaEmptyError:
-                    pass
-
-            # send second bulk of images
-            if group_1:
-                try:
-                    result_1 = await event.respond(file=group_1)
-                except WebpageMediaEmptyError:
-                    pass
-
-            # send third bulk of images
-            if group_2:
-                try:
-                    result_2 = await event.respond(file=group_2)
-                except WebpageMediaEmptyError:
-                    pass
-
-            if not any((result_0, result_1, result_2, )):
+            try:
+                await event.respond(file=images[:10])
+            except WebpageMediaEmptyError as e:
                 await event.respond(_("no_images"))
-                # notify admin for debugging
-                await bot.send_message(
-                    entity=ADMIN_ID,
-                    message=f"`WebpageMediaEmptyError in movies_handler: {mid}`"
-                )
+                logging.error(e)
         else:
             await event.respond(_("no_images"))
 
