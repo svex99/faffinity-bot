@@ -15,7 +15,8 @@ from telethon.events import NewMessage, CallbackQuery, StopPropagation, \
     InlineQuery
 from telethon.tl.types import InputWebDocument
 from telethon.errors.rpcerrorlist import MediaCaptionTooLongError, \
-    WebpageMediaEmptyError, UserIsBlockedError, UserIsBotError
+    WebpageMediaEmptyError, UserIsBlockedError, UserIsBotError, \
+    PeerIdInvalidError
 from python_filmaffinity import FilmAffinity
 from python_filmaffinity.exceptions import FilmAffinityConnectionError
 
@@ -599,7 +600,7 @@ async def session_handler(event: MessageEvent):
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern=r"/broadcast"))
+@bot.on(NewMessage(pattern=r"/broadcast (?P<lang>(es)|(en)|(all))"))
 async def broadcast_handler(event: MessageEvent):
     """
     /broadcast command handler.
@@ -607,35 +608,67 @@ async def broadcast_handler(event: MessageEvent):
     msg = await event.get_reply_message()
 
     if msg:
-        await event.respond(f"📢 Starting broadcast to users...")
+        lang = event.pattern_match["lang"]
+        if lang == "all":
+            users_query = db_conn.execute("SELECT tid FROM user")
+            total_query = db_conn.execute("SELECT COUNT() FROM user")
+        else:
+            users_query = db_conn.execute(
+                "SELECT tid FROM user WHERE lang = ?",
+                (lang, )
+            )
+            total_query = db_conn.execute(
+                "SELECT COUNT() FROM user WHERE lang = ?",
+                (lang, )
+            )
+
+        async with total_query as cursor:
+            (total, ) = await cursor.fetchone()
+
+        text = (
+            '📢 Broadcasting to `{}` users...\n'
+            '🚫 Errors: `{}`\n'
+            '✅ Broadcast: `{}/{}`'
+        )
         count = 0
         errors = 0
-
-        async with db_conn.execute("SELECT tid FROM user") as cursor:
+        progress_msg = await event.respond(
+            message=text.format(lang, errors, count - errors, total)
+        )
+        step = (total + 50) // 50
+        async with users_query as cursor:
             async for (tid, ) in cursor:
+                count += 1
+
                 try:
                     await bot.send_message(
                         entity=tid,
                         message=msg
                     )
-                except (UserIsBlockedError, ValueError, UserIsBotError):
+                except (UserIsBlockedError, ValueError, UserIsBotError, PeerIdInvalidError):
                     errors += 1
                 except Exception as e:
                     errors += 1
                     await event.respond(
                         message=(
                             f"Exception: `{type(e)}: {e}`\n\n"
-                            f"Broadcasted: `{count}`\n"
-                            f"Errors: `{errors}`\n\n"
-                            "Sleeping `60` seconds..."
+                            f"At user `{count}`. "
+                            "Sleeping `30` seconds..."
                         )
                     )
-                    await asyncio.sleep(60)
+                    await asyncio.sleep(30)
                 else:
-                    count += 1
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0.25)
 
-        await event.reply(f"✅ Done. Broadcasted message to `{count}` users. Errors `{errors}`.")
+                if count % step == 0 or count == total:
+                    await progress_msg.edit(
+                        text=text.format(lang, errors, count - errors, total)
+                    )
+
+        await event.respond(
+            message="✅ Done!!!",
+            reply_to=progress_msg
+        )
     else:
         await event.respond("⚠ You must reply to a message with /broadcast command.")
 
