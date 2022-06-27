@@ -16,7 +16,8 @@ from telethon.events import NewMessage, CallbackQuery, StopPropagation, \
 from telethon.tl.types import InputWebDocument
 from telethon.errors.rpcerrorlist import MediaCaptionTooLongError, \
     WebpageMediaEmptyError, UserIsBlockedError, UserIsBotError, \
-    PeerIdInvalidError
+    PeerIdInvalidError, ChannelPrivateError, ChatWriteForbiddenError, \
+    ChatAdminRequiredError, InputUserDeactivatedError
 from python_filmaffinity import FilmAffinity
 from python_filmaffinity.exceptions import FilmAffinityConnectionError
 
@@ -178,7 +179,7 @@ async def help_handler(event: MessageEvent):
     admin_help = (
         "\n\n##### Admin help #####\n"
         "/session - get the session file.\n"
-        "/broadcast - broadcast a message to users of the bot.\n"
+        "/broadcast `<lang>|all` - broadcast a message to users of the bot.\n"
         "/stats - stats of the bot.\n"
         "/ads - list of active ads.\n"
     ) if event.sender_id == ADMIN_ID else ""
@@ -645,20 +646,28 @@ async def broadcast_handler(event: MessageEvent):
                         entity=tid,
                         message=msg
                     )
-                except (UserIsBlockedError, ValueError, UserIsBotError, PeerIdInvalidError):
+                except (
+                    ValueError,
+                    UserIsBlockedError,
+                    UserIsBotError,
+                    PeerIdInvalidError,
+                    ChannelPrivateError,
+                    ChatWriteForbiddenError,
+                    ChatAdminRequiredError,
+                    InputUserDeactivatedError
+                ):
                     errors += 1
                 except Exception as e:
                     errors += 1
                     await event.respond(
                         message=(
                             f"Exception: `{type(e)}: {e}`\n\n"
-                            f"At user `{count}`. "
-                            "Sleeping `30` seconds..."
+                            f"At user `{count}`. Sleeping `30` seconds..."
                         )
                     )
                     await asyncio.sleep(30)
-                else:
-                    await asyncio.sleep(0.25)
+
+                await asyncio.sleep(0.25)
 
                 if count % step == 0 or count == total:
                     await progress_msg.edit(
