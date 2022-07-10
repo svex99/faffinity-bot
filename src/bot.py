@@ -63,25 +63,6 @@ fa_en = FilmAffinity(lang="en", cache_path="data")
 db_conn: aiosqlite.Connection | None = None
 
 
-@bot.on(CallbackQuery(pattern=rb"delete(_(?P<msg_1>\d+))?"))
-async def delete_handler(event: CallbackQuery.Event):
-    """
-    Deletes the message of the button clicked and max 2 messages more.
-    """
-    msg_1 = event.pattern_match["msg_1"]
-
-    messages_to_delete = [event.message_id]
-    if msg_1 is not None:
-        messages_to_delete.append(int(msg_1))
-
-    await bot.delete_messages(
-        entity=event.sender_id,
-        message_ids=messages_to_delete
-    )
-
-    raise StopPropagation
-
-
 @bot.on(NewMessage())
 @bot.on(CallbackQuery())
 @bot.on(InlineQuery())
@@ -153,6 +134,35 @@ async def inline_search_handler(event: InlineQuery.Event):
                     text=_("no_matches").format(query=event.text),
                 )
             ])
+
+
+@bot.on(NewMessage())
+@bot.on(CallbackQuery())
+async def private_door(event: MessageEvent | CallbackQuery.Event):
+    """
+    Avoids handling of events in groups and channels for next handlers.
+    """
+    if not event.is_private:
+        raise StopPropagation
+
+
+@bot.on(CallbackQuery(pattern=rb"delete(_(?P<msg_1>\d+))?"))
+async def delete_handler(event: CallbackQuery.Event):
+    """
+    Deletes the message of the button clicked and max 2 messages more.
+    """
+    msg_1 = event.pattern_match["msg_1"]
+
+    messages_to_delete = [event.message_id]
+    if msg_1 is not None:
+        messages_to_delete.append(int(msg_1))
+
+    await bot.delete_messages(
+        entity=event.sender_id,
+        message_ids=messages_to_delete
+    )
+
+    raise StopPropagation
 
 
 @bot.on(NewMessage(pattern=r"/start( id_(?P<id>\d+))?"))
