@@ -8,18 +8,25 @@ You can find it at Telegram: [@faffinitybot](https://t.me/faffinitybot).
 
 ## 🤖 How to run the bot
 
-1. Rename the `.env.example` file to `.env` and configure inside the environment variables properly:
+1. Rename the `data/.env.example` file to `data/.env` and configure inside the environment variables properly:
 
 - `API_ID` - your api ID from https://my.telegram.org.
 - `API_HASH` - your api hash from https://my.telegram.org.
 - `BOT_TOKEN` - token of the bot your created with [@botfather](https://t.me/botfather).
 - `ADMIN_ID` - your Telegram account ID.
-- `REDIS_HOST` - redis service that is going to work as cache (if you are going to use `docker-compose` set this field to `redis`).
 
-2. Make sure you have installed docker and docker-compose, go to the root folder of the project and run the command:
+2. Make sure you have installed `docker` and `make`, go to the root folder of the project and run the next commands:
 
 ```
-docker-compose up -d --build
+❯ make init-db
+❯ make build-prod
+❯ make run-prod
+```
+
+3. To stop the bot:
+
+```
+❯ make down
 ```
 
 ## 📌 TODO
