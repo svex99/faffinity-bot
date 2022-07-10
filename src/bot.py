@@ -63,6 +63,7 @@ fa_en = FilmAffinity(lang="en", cache_path="data")
 db_conn: aiosqlite.Connection | None = None
 
 
+@bot.on(NewMessage(pattern=r"/start lang_(?P<lang>(es)|(en))"))
 @bot.on(NewMessage())
 @bot.on(CallbackQuery())
 @bot.on(InlineQuery())
@@ -70,6 +71,12 @@ async def i18n_handler(event: CallbackMessageEventLike):
     """
     Sets the default language for this event.
     """
+    if isinstance(event, NewMessage.Event) and event.pattern_match is not None:
+        print(event.pattern_match, type(event))
+        event_lang = event.pattern_match.groupdict().get("lang")
+    else:
+        event_lang = None
+
     async with db_conn.execute(
         "SELECT lang FROM user WHERE tid = ?",
         (event.sender_id, )
@@ -77,7 +84,7 @@ async def i18n_handler(event: CallbackMessageEventLike):
         (lang, ) = (await cursor.fetchone()) or (None, )
 
     if lang is None:
-        lang = "es"
+        lang = event_lang or "es"
         await db_conn.execute(
             "INSERT INTO user (tid, lang) VALUES (?, ?)",
             (event.sender_id, lang, )
@@ -123,7 +130,7 @@ async def inline_search_handler(event: InlineQuery.Event):
                         attributes=[]
                     ) if movie["poster"] != "/imgs/movies/noimgfull.jpg" else None,
                     link_preview=False,
-                    buttons=kbs.inline_details(_, movie["id"])
+                    buttons=kbs.inline_details(_, fa.lang, movie["id"])
                 )
                 for movie in result
             ])
@@ -165,7 +172,7 @@ async def delete_handler(event: CallbackQuery.Event):
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern=r"/start( id_(?P<id>\d+))?"))
+@bot.on(NewMessage(pattern=r"/start( lang_((es)|(en))_id_(?P<id>\d+))?"))
 async def start_handler(event: MessageEvent):
     """
     /start command handler.
@@ -257,7 +264,7 @@ async def search_handler(event: MessageEvent):
     raise StopPropagation
 
 
-@bot.on(NewMessage(pattern=r"/start id_(?P<id>\d+)"))
+@bot.on(NewMessage(pattern=r"/start lang_((es)|(en))_id_(?P<id>\d+)"))
 @bot.on(CallbackQuery(pattern=rb"film_(?P<id>\d+)"))
 async def movie_handler(event: CallbackMessageEventLike):
     """

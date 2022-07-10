@@ -91,9 +91,9 @@ def tops(_: Callable) -> Keyboard:
     ]
 
 
-def inline_details(_: Callable, mid: str) -> Keyboard:
+def inline_details(_: Callable, lang: str, mid: str) -> Keyboard:
     return [
-        Button.url(_("see_at_bot"), f"https://t.me/faffinitybot?start=id_{mid}")
+        Button.url(_("see_at_bot"), f"https://t.me/faffinitybot?start=lang_{lang}_id_{mid}")
     ]
 
 
