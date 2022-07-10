@@ -54,7 +54,6 @@ logging.basicConfig(
 )
 
 urllib3.disable_warnings()
-bot.start(bot_token=BOT_TOKEN)
 
 # Spanish FA client
 fa_es = FilmAffinity(lang="es", cache_path="data")
@@ -740,9 +739,20 @@ async def stats_handler(event: MessageEvent):
 async def main():
     global db_conn
     db_conn = await aiosqlite.connect(str(DB))
-    await bot.run_until_disconnected()
+    await bot.start(bot_token=BOT_TOKEN)
 
+
+async def stop():
+    await bot.disconnect()
+    await db_conn.close()
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
+    try:
+        loop.run_until_complete(main())
+        loop.run_forever()
+    except KeyboardInterrupt:
+        print("Stopping the bot...")
+    finally:
+        loop.run_until_complete(stop())
+        print("Bot stopped")
