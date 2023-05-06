@@ -4,6 +4,7 @@ import asyncio
 import random
 
 from telethon import TelegramClient
+from telethon.utils import split_text
 
 from bot_types import FAMovie
 
@@ -48,7 +49,9 @@ class TelegramLogsHandler(StreamHandler):
 
     async def _emit(self, message):
         try:
-            await self.client.send_message(self.user_id, message)
+            # Split the message in 4096 size chunks to fit Telegram messages size.
+            for chunk in [message[i:i+4096] for i in range(0, len(message), 4096)]:
+                await self.client.send_message(self.user_id, chunk)
         except ConnectionError:
             pass
 
