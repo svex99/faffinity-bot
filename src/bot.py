@@ -740,6 +740,7 @@ async def main():
     global db_conn
     db_conn = await aiosqlite.connect(str(DB))
     await bot.start(bot_token=BOT_TOKEN)
+    await bot.get_me()
 
 
 async def stop():
