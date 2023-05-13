@@ -1,4 +1,4 @@
 python-dotenv==0.18.0
-python-filmaffinity==0.0.19
+python-filmaffinity @ git+https://github.com/svex99/python_filmaffinity@master
 Telethon==1.23.0
 aiosqlite==0.17.0
